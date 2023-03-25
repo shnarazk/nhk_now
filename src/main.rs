@@ -16,8 +16,8 @@ struct AppConfig {
     #[clap(short = 'd')]
     date: Option<String>,
     /// API key
-    #[clap(short = 'k', long)]
-    key: String,
+    #[clap(short = 'k', long = "key", env)]
+    apikey: String,
     /// Just download the csv w/o GUI
     #[clap(long = "headless")]
     headless: bool,
@@ -125,7 +125,7 @@ fn app(cx: Scope) -> Element {
 async fn load_json(config: &AppConfig) -> hyper::Result<Value> {
     let area = config.area.as_deref().unwrap_or("400");
     let service = config.service.as_deref().unwrap_or("g1");
-    let key = &config.key;
+    let key = &config.apikey;
     // "https://api.nhk.or.jp/v2/pg/list/{area}/{service}/{date}.json?key={key}"
     let base = format!("https://api.nhk.or.jp/v2/pg/now/{area}/{service}.json?key={key}");
     let client = Client::builder().build::<_, hyper::Body>(HttpsConnector::new());
