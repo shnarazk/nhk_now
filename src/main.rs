@@ -1,10 +1,11 @@
 use {
-    clap::Parser, dioxus::prelude::*, hyper::Client, hyper_tls::HttpsConnector, serde_json::Value,
+    clap::Parser, dioxus::prelude::*, dioxus_desktop::Config, hyper::Client,
+    hyper_tls::HttpsConnector, serde_json::Value,
 };
 
 #[derive(Clone, Debug, Default, Parser)]
 #[clap(author, version, about)]
-struct Config {
+struct AppConfig {
     /// area code
     #[clap(short = 'a')]
     area: Option<String>,
@@ -24,14 +25,28 @@ struct Config {
 
 #[tokio::main]
 async fn main() {
-    let config = Config::parse();
+    let app_config = AppConfig::parse();
     println!("Hello, world!");
-    dbg!(&config);
-    let Ok(json) = load_json(&config).await else { panic!("failed to get a JSON");};
-    dbg!(&json);
+    dbg!(&app_config);
+    let Ok(json) = load_json(&app_config).await else { panic!("failed to get a JSON");};
+    dbg!(&json["nowonair_list"]["g1"]["present"]["title"]);
+    dioxus_desktop::launch_cfg(
+        App,
+        Config::new()
+            .with_custom_head("<script src=\"https://cdn.tailwindcss.com\"></script>".to_string()),
+    );
 }
 
-async fn load_json(config: &Config) -> hyper::Result<Value> {
+#[allow(non_snake_case)]
+fn App(cx: Scope) -> Element {
+    cx.render(rsx!(
+    h1 {
+        class: "inline-block bg-slate-200 m-10 text-red-600 drop-shadow-xl border-solid border-2 border-indigo-600 rounded",
+        "NHK綜合プログラム"
+    }))
+}
+
+async fn load_json(config: &AppConfig) -> hyper::Result<Value> {
     let area = config.area.as_deref().unwrap_or("400");
     let service = config.service.as_deref().unwrap_or("g1");
     let key = &config.key;
