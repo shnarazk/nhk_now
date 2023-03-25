@@ -9,4 +9,5 @@ dioxus = { version = "^0.3" }
 dioxus-desktop = { version = "^0.3" }
 hyper = { version = "^0.14", features = ["full"] }
 hyper-tls = { version = "^0.5" }
+serde_json = { version = "^1.0" }
 tokio = { version = "^1.26", features = ["full"] }
