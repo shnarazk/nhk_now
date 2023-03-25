@@ -1,0 +1,12 @@
+[package]
+name = "nhk_now"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "^4.1", features = ["derive"] }
+dioxus = { version = "^0.3" }
+dioxus-desktop = { version = "^0.3" }
+hyper = { version = "^0.14", features = ["full"] }
+hyper-tls = { version = "^0.5" }
+tokio = { version = "^1.26", features = ["full"] }
