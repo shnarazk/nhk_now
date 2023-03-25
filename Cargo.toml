@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = { version = "^0.4" }
 clap = { version = "^4.1", features = ["derive"] }
 dioxus = { version = "^0.3" }
 dioxus-desktop = { version = "^0.3" }

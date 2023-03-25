@@ -1,5 +1,5 @@
 use {
-    clap::Parser, dioxus::prelude::*, dioxus_desktop::Config, hyper::Client,
+    chrono::prelude::*, clap::Parser, dioxus::prelude::*, dioxus_desktop::Config, hyper::Client,
     hyper_tls::HttpsConnector, serde_json::Value,
 };
 
@@ -39,20 +39,84 @@ fn app(cx: Scope) -> Element {
     // dbg!(json);
     match json {
         Some(Ok(json)) => {
-            // dbg!(&json["nowonair_list"]["g1"]["present"]["title"]);
+            // start_time
+            // end_time
+            // subtitle
+            dbg!(&json["nowonair_list"]["g1"]["present"]);
+            dbg!(&json["nowonair_list"]["g1"]);
             cx.render(rsx!{
                 h1 {
                     class: "inline-block px-10 bg-slate-200 m-4 text-lg text-red-600 drop-shadow-xl border-solid border-2 border-indigo-600 rounded",
                     "NHK綜合プログラム"
                 }
-                ul {
-                    li {
-                        class: "inline-block bg-slate-200 px-10 m-10 text-slate-600 drop-shadow-xl border-solid border-0 border-indigo-600 rounded",
-                        format!("{}", json["nowonair_list"]["g1"]["present"]["title"]),
+                table {
+                    class: "bg-slate-200 px-10 m-10 text-slate-600 drop-shadow-xl border-solid border-0 border-indigo-600 rounded",
+                    tr {
+                        class: "px-2",
+                        th {
+                            "開始時間"
+                        }
+                        th {
+                            class: "pl-10",
+                            "program"
+                        }
                     }
-                    li {
-                        class: "inline-block bg-slate-200 px-10 m-10 text-slate-600 drop-shadow-xl border-solid border-0 border-indigo-600 rounded",
-                        format!("{}", json["nowonair_list"]["g1"]["previous"]["title"]),
+                    tr {
+                        class: "bg-slate-100",
+                        td {
+                            class: "px-2",
+                            DateTime::parse_from_rfc3339(json["nowonair_list"]["g1"]["following"]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
+                        }
+                        td {
+                            class: "pl-6 pr-2",
+                            json["nowonair_list"]["g1"]["following"]["title"].as_str(),
+                        }
+                    }
+                    tr {
+                        class: "bg-slate-100",
+                        td {
+                            colspan: 2,
+                            class: "pl-10 pr-2",
+                            json["nowonair_list"]["g1"]["following"]["subtitle"].as_str(),
+                        }
+                    }
+                    tr {
+                        class: "bg-slate-200",
+                        td {
+                            class: "px-2",
+                            DateTime::parse_from_rfc3339(json["nowonair_list"]["g1"]["present"]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
+                        }
+                        td {
+                            class: "pl-6 pr-2",
+                            json["nowonair_list"]["g1"]["present"]["title"].as_str(),
+                        }
+                    }
+                    tr {
+                        class: "bg-slate-200",
+                        td {
+                            colspan: 2,
+                            class: "pl-10 pr-2",
+                            json["nowonair_list"]["g1"]["present"]["subtitle"].as_str(),
+                        }
+                    }
+                    tr {
+                        class: "bg-slate-600 text-gray-400",
+                        td {
+                            class: "px-2",
+                            DateTime::parse_from_rfc3339(json["nowonair_list"]["g1"]["previous"]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
+                        }
+                        td {
+                            class: "pl-6 pr-2",
+                            json["nowonair_list"]["g1"]["previous"]["title"].as_str(),
+                        }
+                    }
+                    tr {
+                        class: "bg-slate-600 text-gray-400",
+                        td {
+                            colspan: 2,
+                            class: "pl-10 pr-2",
+                            json["nowonair_list"]["g1"]["previous"]["subtitle"].as_str(),
+                        }
                     }
                 }
             })
