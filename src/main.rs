@@ -33,11 +33,15 @@ async fn main() {
     );
 }
 
+#[allow(unused_variables)]
 fn app(cx: Scope) -> Element {
     let app_config = AppConfig::parse();
-    let json = use_future(cx, (), |_| async move { load_json(&app_config).await }).value();
+    let mut count = use_state(cx, || 0);
+    let json = use_future(cx, (count,), |(count,)| async move {
+        load_json(&app_config).await
+    });
     // dbg!(json);
-    match json {
+    match json.value() {
         Some(Ok(json)) => {
             // dbg!(&json["nowonair_list"]["g1"]["present"]);
             // dbg!(&json["nowonair_list"]["g1"]);
@@ -114,6 +118,14 @@ fn app(cx: Scope) -> Element {
                             class: "pl-20 pr-2",
                             json["nowonair_list"]["g1"]["previous"]["subtitle"].as_str(),
                         }
+                    }
+                }
+                div {
+                    class: "text-center ",
+                    button {
+                        class: "p-2 my-4 bg-indigo-500 text-white fond-bold rounded-lg border shadow-lg",
+                        onclick: move |_| { count += 1 },
+                        "reload"
                     }
                 }
             })
