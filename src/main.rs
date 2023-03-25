@@ -39,18 +39,15 @@ fn app(cx: Scope) -> Element {
     // dbg!(json);
     match json {
         Some(Ok(json)) => {
-            // start_time
-            // end_time
-            // subtitle
-            dbg!(&json["nowonair_list"]["g1"]["present"]);
-            dbg!(&json["nowonair_list"]["g1"]);
+            // dbg!(&json["nowonair_list"]["g1"]["present"]);
+            // dbg!(&json["nowonair_list"]["g1"]);
             cx.render(rsx!{
                 h1 {
                     class: "inline-block px-10 bg-slate-200 m-4 text-lg text-red-600 drop-shadow-xl border-solid border-2 border-indigo-600 rounded",
                     "NHK綜合プログラム"
                 }
                 table {
-                    class: "bg-slate-200 px-10 m-10 text-slate-600 drop-shadow-xl border-solid border-0 border-indigo-600 rounded",
+                    class: "bg-red-600 border-red-600 border-y-2 px-10 m-10 text-white drop-shadow-xl border-solid border-0 border-indigo-600 rounded",
                     tr {
                         class: "px-2",
                         th {
@@ -62,7 +59,7 @@ fn app(cx: Scope) -> Element {
                         }
                     }
                     tr {
-                        class: "bg-slate-100",
+                        class: "bg-slate-100 text-gray-600",
                         td {
                             class: "px-2",
                             DateTime::parse_from_rfc3339(json["nowonair_list"]["g1"]["following"]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
@@ -73,15 +70,15 @@ fn app(cx: Scope) -> Element {
                         }
                     }
                     tr {
-                        class: "bg-slate-100",
+                        class: "bg-slate-100 text-gray-600",
                         td {
                             colspan: 2,
-                            class: "pl-10 pr-2",
+                            class: "pl-20 pr-2",
                             json["nowonair_list"]["g1"]["following"]["subtitle"].as_str(),
                         }
                     }
                     tr {
-                        class: "bg-slate-200",
+                        class: "bg-slate-200 text-black",
                         td {
                             class: "px-2",
                             DateTime::parse_from_rfc3339(json["nowonair_list"]["g1"]["present"]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
@@ -92,15 +89,15 @@ fn app(cx: Scope) -> Element {
                         }
                     }
                     tr {
-                        class: "bg-slate-200",
+                        class: "bg-slate-200 text-black",
                         td {
                             colspan: 2,
-                            class: "pl-10 pr-2",
+                            class: "pl-20 pr-2",
                             json["nowonair_list"]["g1"]["present"]["subtitle"].as_str(),
                         }
                     }
                     tr {
-                        class: "bg-slate-600 text-gray-400",
+                        class: "bg-slate-400 text-gray-800",
                         td {
                             class: "px-2",
                             DateTime::parse_from_rfc3339(json["nowonair_list"]["g1"]["previous"]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
@@ -111,10 +108,10 @@ fn app(cx: Scope) -> Element {
                         }
                     }
                     tr {
-                        class: "bg-slate-600 text-gray-400",
+                        class: "bg-slate-400 text-gray-800",
                         td {
                             colspan: 2,
-                            class: "pl-10 pr-2",
+                            class: "pl-20 pr-2",
                             json["nowonair_list"]["g1"]["previous"]["subtitle"].as_str(),
                         }
                     }
