@@ -29,7 +29,12 @@ async fn main() {
     dioxus_desktop::launch_cfg(
         app,
         Config::new()
-            .with_custom_head("<link href=\"https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css\" rel=\"stylesheet\" type=\"text/css\" />\n<script src=\"https://cdn.tailwindcss.com\"></script>".to_string()),
+            .with_custom_head("<link href=\"https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css\" rel=\"stylesheet\" type=\"text/css\" />\n<script src=\"https://cdn.tailwindcss.com\"></script>".to_string())
+        .with_window(
+            dioxus_desktop::tao::window::WindowBuilder::new()
+                .with_resizable(true)
+                .with_inner_size(dioxus_desktop::wry::application::dpi::LogicalSize::new(640.0,340.0))
+            ),
     );
 }
 
@@ -43,7 +48,7 @@ fn app(cx: Scope) -> Element {
     };
     let service = use_state(cx, || s);
     let json = use_future(cx, (count, service), |(count, service)| async move {
-        load_json(&app_config, &*service).await
+        load_json(&app_config, &service).await
     });
     // dbg!(json);
     macro_rules! TAB_CLASS {
@@ -101,7 +106,7 @@ fn app(cx: Scope) -> Element {
                                 button {
                                     class: "btn btn-outline btn-sm text-neutral-200",
                                     onclick: move |_| { count += 1 },
-                                    "プログラム更新"
+                                    "表示情報更新"
                                 }
                             }
                         }
