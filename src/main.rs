@@ -33,7 +33,7 @@ async fn main() {
         .with_window(
             dioxus_desktop::tao::window::WindowBuilder::new()
                 .with_resizable(true)
-                .with_inner_size(dioxus_desktop::wry::application::dpi::LogicalSize::new(640.0,340.0))
+                .with_inner_size(dioxus_desktop::wry::application::dpi::LogicalSize::new(640.0,370.0))
             ),
     );
 }
