@@ -32,6 +32,7 @@ async fn main() {
             .with_custom_head("<link href=\"https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css\" rel=\"stylesheet\" type=\"text/css\" />\n<script src=\"https://cdn.tailwindcss.com\"></script>".to_string())
         .with_window(
             dioxus_desktop::tao::window::WindowBuilder::new()
+                .with_title("NHK now")
                 .with_resizable(true)
                 .with_inner_size(dioxus_desktop::wry::application::dpi::LogicalSize::new(640.0,370.0))
             ),
