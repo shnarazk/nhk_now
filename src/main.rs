@@ -172,67 +172,109 @@ fn app(cx: Scope) -> Element {
                 }
             })
         }
-        e => cx.render(rsx! {
-            // match e {
-            //     Some(e) => { dbg!(e);}
-            //     _ => { dbg!(e);}
-            // }
-            div {
-                class: "tabs mt-2 ml-2",
-                button {
-                    class: TAB_CLASS!("g1"),
-                    onclick: move |_| service.set("g1".to_string()),
-                    "NHK総合1"
-                },
-                button {
-                    class: TAB_CLASS!("e1"),
-                    onclick: move |_| service.set("e1".to_string()),
-                    "NHKEテレ1"
-                },
-                button {
-                    class: TAB_CLASS!("r1"),
-                    onclick: move |_| service.set("r1".to_string()),
-                    "NHKラジオ第1"
-                },
-                button {
-                    class: TAB_CLASS!("r2"),
-                    onclick: move |_| service.set("r2".to_string()),
-                    "NHKラジオ第2"
-                },
-                button {
-                    class: TAB_CLASS!("r3"),
-                    onclick: move |_| service.set("r3".to_string()),
-                    "NHKFM"
-                },
-            }
-            div {
-                class: "grid bg-base-300 p-0 mx-2 drop-shadow-xl",
+        Some(Ok(json)) => {
+            dbg!(&service);
+            assert!(json["nowonair_list"][service.as_str()].is_null());
+            // service.set(service.to_string().clone());
+            cx.render(rsx! {
                 div {
-                    class: "grid grid-cols-1 place-items-center h-[300px]",
+                    class: "tabs mt-2 ml-2",
+                    button {
+                        class: TAB_CLASS!("g1"),
+                        onclick: move |_| service.set("g1".to_string()),
+                        "NHK総合1"
+                    },
+                    button {
+                        class: TAB_CLASS!("e1"),
+                        onclick: move |_| service.set("e1".to_string()),
+                        "NHKEテレ1"
+                    },
+                    button {
+                        class: TAB_CLASS!("r1"),
+                        onclick: move |_| service.set("r1".to_string()),
+                        "NHKラジオ第1"
+                    },
+                    button {
+                        class: TAB_CLASS!("r2"),
+                        onclick: move |_| service.set("r2".to_string()),
+                        "NHKラジオ第2"
+                    },
+                    button {
+                        class: TAB_CLASS!("r3"),
+                        onclick: move |_| service.set("r3".to_string()),
+                        "NHKFM"
+                    },
+                }
+                div {
+                    class: "grid bg-base-300 p-0 mx-2 drop-shadow-xl",
+                }
+            })
+        }
+        _ => {
+            dbg!();
+            cx.render(rsx! {
+                div {
+                    class: "tabs mt-2 ml-2",
+                    button {
+                        class: TAB_CLASS!("g1"),
+                        onclick: move |_| service.set("g1".to_string()),
+                        "NHK総合1"
+                    },
+                    button {
+                        class: TAB_CLASS!("e1"),
+                        onclick: move |_| service.set("e1".to_string()),
+                        "NHKEテレ1"
+                    },
+                    button {
+                        class: TAB_CLASS!("r1"),
+                        onclick: move |_| service.set("r1".to_string()),
+                        "NHKラジオ第1"
+                    },
+                    button {
+                        class: TAB_CLASS!("r2"),
+                        onclick: move |_| service.set("r2".to_string()),
+                        "NHKラジオ第2"
+                    },
+                    button {
+                        class: TAB_CLASS!("r3"),
+                        onclick: move |_| service.set("r3".to_string()),
+                        "NHKFM"
+                    },
+                }
+                div {
+                    class: "grid bg-base-300 p-0 mx-2 drop-shadow-xl",
                     div {
-                        class: "radial-progress animate-spin w-20 h-20",
-                        style: "--value:70;",
-                        ""
+                        class: "grid grid-cols-1 place-items-center h-[300px]",
+                        div {
+                            class: "radial-progress animate-spin w-20 h-20",
+                            style: "--value:70;",
+                            ""
+                        }
                     }
                 }
-            }
-        }),
+            })
+        }
     }
 }
 
 async fn load_json(config: &AppConfig, service: &str) -> hyper::Result<Value> {
-    let area = config.area.as_deref().unwrap_or("400");
-    let key = &config.apikey;
-    // "https://api.nhk.or.jp/v2/pg/list/{area}/{service}/{date}.json?key={key}"
-    let client = Client::builder().build::<_, hyper::Body>(HttpsConnector::new());
-    let base = format!("https://api.nhk.or.jp/v2/pg/now/{area}/{service}.json?key={key}")
-        .parse()
-        .expect("wrong url");
-    dbg!(&base);
+    let client = Client::builder()
+        .retry_canceled_requests(true)
+        .build::<_, hyper::Body>(HttpsConnector::new());
+    let base = {
+        // "https://api.nhk.or.jp/v2/pg/list/{area}/{service}/{date}.json?key={key}"
+        let area = config.area.as_deref().unwrap_or("400");
+        let key = &config.apikey;
+        format!("https://api.nhk.or.jp/v2/pg/now/{area}/{service}.json?key={key}")
+            .parse()
+            .expect("wrong url")
+    };
+    // dbg!();
     let res = client.get(base).await?;
-    dbg!();
+    // dbg!(&res);
     let buf = hyper::body::to_bytes(res).await?;
     let str = String::from_utf8_lossy(buf.as_ref());
+    assert!(!str.is_empty());
     // dbg!(&str);
     let json: Value = serde_json::from_str(str.to_string().as_str()).expect("invalid json");
     // dbg!(&json);
