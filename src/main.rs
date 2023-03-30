@@ -69,27 +69,27 @@ fn app(cx: Scope) -> Element {
                     class: "tabs mt-2 ml-2",
                     button {
                         class: TAB_CLASS!("g1", ""),
-                        onclick: move |_| channel.set("g1".to_string()),
+                        onclick: move |_| { count += 1; channel.set("g1".to_string()) },
                         "NHK総合1"
                     },
                     button {
                         class: TAB_CLASS!("e1", ""),
-                        onclick: move |_| channel.set("e1".to_string()),
+                        onclick: move |_| { count += 1; channel.set("e1".to_string()) },
                         "NHKEテレ1"
                     },
                     button {
                         class: TAB_CLASS!("r1", ""),
-                        onclick: move |_| channel.set("r1".to_string()),
+                        onclick: move |_| { count += 1; channel.set("r1".to_string()) },
                         "NHKラジオ第1"
                     },
                     button {
                         class: TAB_CLASS!("r2", ""),
-                        onclick: move |_| channel.set("r2".to_string()),
+                        onclick: move |_| { count += 1; channel.set("r2".to_string()) },
                         "NHKラジオ第2"
                     },
                     button {
                         class: TAB_CLASS!("r3", ""),
-                        onclick: move |_| channel.set("r3".to_string()),
+                        onclick: move |_| { count += 1; channel.set("r3".to_string()) },
                         "NHKFM"
                     },
                 }
@@ -179,27 +179,27 @@ fn app(cx: Scope) -> Element {
                     class: "tabs mt-2 ml-2",
                     button {
                         class: TAB_CLASS!("g1", ""),
-                        onclick: move |_| channel.set("g1".to_string()),
+                        onclick: move |_| { count += 1; channel.set("g1".to_string()) },
                         "NHK総合1"
                     },
                     button {
                         class: TAB_CLASS!("e1", ""),
-                        onclick: move |_| channel.set("e1".to_string()),
+                        onclick: move |_| { count += 1; channel.set("e1".to_string()) },
                         "NHKEテレ1"
                     },
                     button {
                         class: TAB_CLASS!("r1", ""),
-                        onclick: move |_| channel.set("r1".to_string()),
+                        onclick: move |_| { count += 1; channel.set("r1".to_string()) },
                         "NHKラジオ第1"
                     },
                     button {
                         class: TAB_CLASS!("r2", ""),
-                        onclick: move |_| channel.set("r2".to_string()),
+                        onclick: move |_| { count += 1; channel.set("r2".to_string()) },
                         "NHKラジオ第2"
                     },
                     button {
                         class: TAB_CLASS!("r3", ""),
-                        onclick: move |_| channel.set("r3".to_string()),
+                        onclick: move |_| { count += 1; channel.set("r3".to_string()) },
                         "NHKFM"
                     },
                 }
@@ -266,7 +266,6 @@ fn parse_json(json: Option<&hyper::Result<Value>>) -> Option<(Value, String)> {
     };
     for ch in ["g1", "e1", "r1", "r2", "r3"] {
         if let Some(j) = json["nowonair_list"].get(ch) {
-            dbg!(&j);
             return Some((j.clone(), ch.to_string()));
         }
     }
