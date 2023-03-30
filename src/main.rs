@@ -43,30 +43,16 @@ async fn main() {
 fn app(cx: Scope) -> Element {
     let app_config = AppConfig::parse();
     let mut count = use_state(cx, || 0);
+    let channel = use_state(cx, || match &app_config.service {
+        Some(s) => s.clone(),
+        _ => "g1".to_string(),
+    });
     let json = {
         let c = app_config.clone();
-        use_future(cx, (count,), |(count,)| async move {
-            let service = match &c.service {
-                Some(s) => s.clone(),
-                _ => "g1".to_string(),
-            };
-            load_json_reqwest(c, service).await
+        use_future(cx, (count, channel), |(count, channel)| async move {
+            load_json_reqwest(c, channel.get().clone()).await
         })
     };
-    let fetch = {
-        let c = app_config.clone();
-        move |target: String| async move {
-            json.set(load_json_reqwest(c, target).await);
-        }
-    };
-    macro_rules! Fetch {
-        ($config: expr, $target: expr) => {
-            move |_| async move {
-                json.set(load_json_reqwest($config, $target).await);
-            }
-        };
-    }
-    // dbg!(json);
     macro_rules! TAB_CLASS {
         ($target: expr, $service: expr) => {
             if $target == $service {
@@ -77,35 +63,33 @@ fn app(cx: Scope) -> Element {
         };
     }
     match parse_json(json.value()) {
-        Some((json, channel)) => {
-            // json["nowonair_list"].
-            // dbg!(&json["nowonair_list"][service.as_str()]["following"]["start_time"]);
+        Some((json, ch)) => {
             cx.render(rsx!{
                 div {
                     class: "tabs mt-2 ml-2",
                     button {
                         class: TAB_CLASS!("g1", ""),
-                        onclick: Fetch!(app_config.clone(), "g1".to_string()),
+                        onclick: move |_| channel.set("g1".to_string()),
                         "NHK総合1"
                     },
                     button {
                         class: TAB_CLASS!("e1", ""),
-                        onclick: Fetch!(app_config.clone(), "e1".to_string()),
+                        onclick: move |_| channel.set("e1".to_string()),
                         "NHKEテレ1"
                     },
                     button {
                         class: TAB_CLASS!("r1", ""),
-                        onclick: Fetch!(app_config.clone(), "".to_string()),
+                        onclick: move |_| channel.set("r1".to_string()),
                         "NHKラジオ第1"
                     },
                     button {
                         class: TAB_CLASS!("r2", ""),
-                        onclick: Fetch!(app_config.clone(), "".to_string()),
+                        onclick: move |_| channel.set("r2".to_string()),
                         "NHKラジオ第2"
                     },
                     button {
                         class: TAB_CLASS!("r3", ""),
-                        onclick: Fetch!(app_config.clone(), "".to_string()),
+                        onclick: move |_| channel.set("r3".to_string()),
                         "NHKFM"
                     },
                 }
@@ -188,44 +172,6 @@ fn app(cx: Scope) -> Element {
                 }
             })
         }
-        // Some(Ok(json)) => {
-        //     dbg!(&service);
-        //     assert!(json["nowonair_list"][service.as_str()].is_null());
-        //     // service.set(service.to_string().clone());
-        //     cx.render(rsx! {
-        //         div {
-        //             class: "tabs mt-2 ml-2",
-        //             button {
-        //                 class: TAB_CLASS!("g1", ""),
-        //                 onclick: move |_| service.set("g1".to_string()),
-        //                 "NHK総合1"
-        //             },
-        //             button {
-        //                 class: TAB_CLASS!("e1", ""),
-        //                 onclick: move |_| service.set("e1".to_string()),
-        //                 "NHKEテレ1"
-        //             },
-        //             button {
-        //                 class: TAB_CLASS!("r1", ""),
-        //                 onclick: move |_| service.set("r1".to_string()),
-        //                 "NHKラジオ第1"
-        //             },
-        //             button {
-        //                 class: TAB_CLASS!("r2", ""),
-        //                 onclick: move |_| service.set("r2".to_string()),
-        //                 "NHKラジオ第2"
-        //             },
-        //             button {
-        //                 class: TAB_CLASS!("r3", ""),
-        //                 onclick: move |_| service.set("r3".to_string()),
-        //                 "NHKFM"
-        //             },
-        //         }
-        //         div {
-        //             class: "grid bg-base-300 p-0 mx-2 drop-shadow-xl",
-        //         }
-        //     })
-        // }
         _ => {
             dbg!();
             cx.render(rsx! {
@@ -233,27 +179,27 @@ fn app(cx: Scope) -> Element {
                     class: "tabs mt-2 ml-2",
                     button {
                         class: TAB_CLASS!("g1", ""),
-                        onclick: Fetch!(app_config.clone(), "".to_string()),
+                        onclick: move |_| channel.set("g1".to_string()),
                         "NHK総合1"
                     },
                     button {
                         class: TAB_CLASS!("e1", ""),
-                        onclick: Fetch!(app_config.clone(), "".to_string()),
+                        onclick: move |_| channel.set("e1".to_string()),
                         "NHKEテレ1"
                     },
                     button {
                         class: TAB_CLASS!("r1", ""),
-                        onclick: Fetch!(app_config.clone(), "".to_string()),
+                        onclick: move |_| channel.set("r1".to_string()),
                         "NHKラジオ第1"
                     },
                     button {
                         class: TAB_CLASS!("r2", ""),
-                        onclick: Fetch!(app_config.clone(), "".to_string()),
+                        onclick: move |_| channel.set("r2".to_string()),
                         "NHKラジオ第2"
                     },
                     button {
                         class: TAB_CLASS!("r3", ""),
-                        onclick: Fetch!(app_config.clone(), "".to_string()),
+                        onclick: move |_| channel.set("r3".to_string()),
                         "NHKFM"
                     },
                 }
@@ -273,6 +219,7 @@ fn app(cx: Scope) -> Element {
     }
 }
 
+#[allow(dead_code)]
 async fn load_json(config: &AppConfig, service: &str) -> hyper::Result<Value> {
     let client = Client::builder()
         .retry_canceled_requests(true)
@@ -296,6 +243,7 @@ async fn load_json(config: &AppConfig, service: &str) -> hyper::Result<Value> {
     // dbg!(&json);
     Ok(json)
 }
+
 async fn load_json_reqwest(config: AppConfig, service: String) -> hyper::Result<Value> {
     let base = {
         // "https://api.nhk.or.jp/v2/pg/list/{area}/{service}/{date}.json?key={key}"
@@ -316,13 +264,11 @@ fn parse_json(json: Option<&hyper::Result<Value>>) -> Option<(Value, String)> {
     let Some(Ok(json)) = json else {
         return None;
     };
-    for ch in ["g1", "e1"] {
-        if let Some(j) = json.get(ch) {
+    for ch in ["g1", "e1", "r1", "r2", "r3"] {
+        if let Some(j) = json["nowonair_list"].get(ch) {
+            dbg!(&j);
             return Some((j.clone(), ch.to_string()));
         }
-    }
-    if json["nowonair_list"].is_null() {
-        return None;
     }
     None
 }
