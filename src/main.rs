@@ -2,37 +2,23 @@ use {
     chrono::prelude::*, clap::Parser, dioxus::prelude::*, dioxus_desktop::Config, serde_json::Value,
 };
 
-#[derive(Clone, Debug, Default, Parser)]
+#[derive(Clone, Debug, Default, Eq, Parser, PartialEq, Props)]
 #[clap(author, version, about)]
 struct AppConfig {
     /// area code
-    #[clap(short = 'a')]
-    area: Option<String>,
-    // /// service (channel)
-    // #[clap(short = 's')]
-    // service: Option<String>,
-    /// date
-    #[clap(short = 'd')]
-    date: Option<String>,
+    #[clap(short = 'a', default_value = "400")]
+    area: u16,
     /// API key
     #[clap(short = 'k', long = "key", env)]
-    apikey: String,
-    /// Just download the csv w/o GUI
-    #[clap(long = "headless")]
-    headless: bool,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, Props)]
-struct AppProps {
-    area: String,
     apikey: String,
 }
 
 #[tokio::main]
 async fn main() {
-    // println!("Hello, world!");
-    dioxus_desktop::launch_cfg(
+    let app_config = AppConfig::parse();
+    dioxus_desktop::launch_with_props(
         app,
+        app_config,
         Config::new()
             .with_custom_head("<link href=\"https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css\" rel=\"stylesheet\" type=\"text/css\" />\n<script src=\"https://cdn.tailwindcss.com\"></script>".to_string())
         .with_window(
@@ -44,19 +30,7 @@ async fn main() {
     );
 }
 
-fn app(cx: Scope) -> Element {
-    let app_config = AppConfig::parse();
-    cx.render(rsx! {
-        AppBody {
-            area: app_config.area.unwrap_or("400".to_string()),
-            apikey: app_config.apikey,
-        }
-    })
-}
-
-// #[allow(unused_variables)]
-#[allow(non_snake_case)]
-fn AppBody(cx: Scope<AppProps>) -> Element {
+fn app(cx: Scope<AppConfig>) -> Element {
     let json: &UseState<Value> = use_state(cx, || serde_json::from_str("{\"NO\": {}}").unwrap());
     macro_rules! Fetch {
         ($service: expr) => {{
@@ -67,10 +41,11 @@ fn AppBody(cx: Scope<AppProps>) -> Element {
                     let ch = $service.to_string();
                     let j = json.to_owned();
                     async move {
-                        let resp = load_json_reqwest(c, ch).await;
-                        if let Ok(json) = resp {
+                        dbg!("open");
+                        if let Ok(json) = fetch_json_reqwest(c, ch).await {
                             j.set(json);
                         }
+                        dbg!("end");
                     }
                 })
             }
@@ -124,7 +99,7 @@ fn AppBody(cx: Scope<AppProps>) -> Element {
                             let ch = ch.to_string();
                             let js = json.to_owned();
                             async move {
-                                if let Ok(resp) = load_json_reqwest(c, ch).await {
+                                if let Ok(resp) = fetch_json_reqwest(c, ch).await {
                                     js.set(resp);
                                 }
                             }
@@ -230,14 +205,29 @@ fn AppBody(cx: Scope<AppProps>) -> Element {
     })
 }
 
-async fn load_json_reqwest(config: AppProps, service: String) -> hyper::Result<Value> {
-    let base = {
-        // "https://api.nhk.or.jp/v2/pg/list/{area}/{service}/{date}.json?key={key}"
-        let area = config.area;
-        let key = &config.apikey;
-        format!("https://api.nhk.or.jp/v2/pg/now/{area}/{service}.json?key={key}")
-    };
-    let buf = reqwest::get(base).await.unwrap().bytes().await.unwrap();
+async fn fetch_json_reqwest(config: AppConfig, service: String) -> Result<Value, ()> {
+    // "https://api.nhk.or.jp/v2/pg/now/{area}/{service}.json?key={key}"
+    let base = format!(
+        "https://api.nhk.or.jp/v2/pg/now/{}/{}.json?key={}",
+        config.area, service, &config.apikey
+    );
+    let client = reqwest::Client::builder()
+        .timeout(core::time::Duration::from_secs(8))
+        .connect_timeout(core::time::Duration::from_secs(8))
+        .pool_idle_timeout(core::time::Duration::from_secs(4))
+        .tcp_keepalive(None)
+        .build()
+        .unwrap();
+    println!("[");
+    let buf = client
+        .get(base)
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    println!("]");
     let str = String::from_utf8_lossy(buf.as_ref());
     assert!(!str.is_empty());
     // dbg!(&str);
