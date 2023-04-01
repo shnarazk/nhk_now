@@ -114,7 +114,7 @@ fn app(cx: Scope<AppConfig>) -> Element {
                         }
                         for p in PROGRAMS.iter() {
                             tr {
-                                class: "{p.1}",
+                                class: p.1,
                                 td {
                                     DateTime::parse_from_rfc3339(data[p.0]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
                                 }
@@ -123,7 +123,7 @@ fn app(cx: Scope<AppConfig>) -> Element {
                                 }
                             }
                             tr {
-                                class:"{p.1}",
+                                class: p.1,
                                 td {
                                     colspan: 2,
                                     class: "whitespace-normal pl-8 w-4/5 text-sm",
@@ -167,12 +167,11 @@ fn app(cx: Scope<AppConfig>) -> Element {
 }
 
 async fn fetch_json_reqwest(config: AppConfig, service: String) -> Result<Value, ()> {
-    // "https://api.nhk.or.jp/v2/pg/now/{area}/{service}.json?key={key}"
     let base = format!(
         "https://api.nhk.or.jp/v2/pg/now/{}/{}.json?key={}",
         config.area, service, &config.apikey
     );
-    println!("1️⃣build");
+    println!("1️⃣:build");
     let client = reqwest::Client::builder()
         // .timeout(core::time::Duration::from_secs(8))
         // .connect_timeout(core::time::Duration::from_secs(8))
@@ -180,7 +179,7 @@ async fn fetch_json_reqwest(config: AppConfig, service: String) -> Result<Value,
         // .tcp_keepalive(None)
         .build()
         .unwrap();
-    println!("2️⃣send");
+    println!("2️⃣:send");
     let buf = client
         .get(base)
         .send()
@@ -189,13 +188,10 @@ async fn fetch_json_reqwest(config: AppConfig, service: String) -> Result<Value,
         .bytes()
         .await
         .unwrap();
-    println!("3️⃣received");
+    println!("3️⃣:received");
 
     let str = String::from_utf8_lossy(buf.as_ref());
-    assert!(!str.is_empty());
-    // dbg!(&str);
     let json: Value = serde_json::from_str(str.to_string().as_str()).expect("invalid json");
-    // dbg!(&json);
     Ok(json)
 }
 
