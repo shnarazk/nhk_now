@@ -211,14 +211,15 @@ async fn fetch_json_reqwest(config: AppConfig, service: String) -> Result<Value,
         "https://api.nhk.or.jp/v2/pg/now/{}/{}.json?key={}",
         config.area, service, &config.apikey
     );
+    println!("1️⃣build");
     let client = reqwest::Client::builder()
-        .timeout(core::time::Duration::from_secs(8))
-        .connect_timeout(core::time::Duration::from_secs(8))
-        .pool_idle_timeout(core::time::Duration::from_secs(4))
-        .tcp_keepalive(None)
+        // .timeout(core::time::Duration::from_secs(8))
+        // .connect_timeout(core::time::Duration::from_secs(8))
+        // .pool_idle_timeout(core::time::Duration::from_secs(4))
+        // .tcp_keepalive(None)
         .build()
         .unwrap();
-    println!("[");
+    println!("2️⃣send");
     let buf = client
         .get(base)
         .send()
@@ -227,7 +228,8 @@ async fn fetch_json_reqwest(config: AppConfig, service: String) -> Result<Value,
         .bytes()
         .await
         .unwrap();
-    println!("]");
+    println!("3️⃣received");
+
     let str = String::from_utf8_lossy(buf.as_ref());
     assert!(!str.is_empty());
     // dbg!(&str);
