@@ -1,7 +1,11 @@
-use {
-    chrono::DateTime, clap::Parser, dioxus::prelude::*, dioxus_desktop::Config, serde_json::Value,
-};
+use bevy::prelude::*;
+// use {chrono::DateTime, clap::Parser, serde_json::Value};
 
+const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.066, 0.349);
+const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.102, 0.522, 1.);
+const MARGIN: Val = Val::Px(5.);
+
+#[allow(dead_code)]
 const SERVICES: [(&str, &str); 5] = [
     ("g1", "NHK総合1"),
     ("e1", "NHKEテレ1"),
@@ -9,202 +13,206 @@ const SERVICES: [(&str, &str); 5] = [
     ("r2", "NHKラジオ第2"),
     ("r3", "NHKFM"),
 ];
+#[allow(dead_code)]
 const PROGRAMS: [(&str, &str); 3] = [
     ("following", "bg-slate-100 text-gray-600"),
     ("present", "bg-slate-200 text-black"),
     ("previous", "bg-slate-400 text-gray-800"),
 ];
 
-#[derive(Clone, Debug, Default, Eq, Parser, PartialEq, Props)]
-#[clap(author, version, about)]
-struct AppConfig {
-    /// area code
-    #[clap(short = 'a', default_value = "400")]
-    area: u32,
-    /// API key
-    #[clap(short = 'k', long = "key", env)]
-    apikey: String,
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: [700., 440.].into(),
+                title: "NHK now".to_string(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }))
+        .add_systems(Startup, spawn_layout)
+        .run()
 }
 
-#[tokio::main]
-async fn main() {
-    let app_config = AppConfig::parse();
-    dioxus_desktop::launch_with_props(
-        app,
-        app_config,
-        Config::new()
-            .with_custom_head("<link href=\"https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css\" rel=\"stylesheet\" type=\"text/css\" />\n<script src=\"https://cdn.tailwindcss.com\"></script>".to_string())
-        .with_window(
-            dioxus_desktop::tao::window::WindowBuilder::new()
-                .with_title("NHK now")
-                .with_resizable(true)
-                .with_inner_size(dioxus_desktop::wry::application::dpi::LogicalSize::new(640.0,370.0))
-            ),
-    );
-}
-
-fn app(cx: Scope<AppConfig>) -> Element {
-    let json: &UseState<Value> = use_state(cx, || serde_json::from_str("{\"NO\": {}}").unwrap());
-    macro_rules! Fetch {
-        ($service: expr) => {{
-            |_| {
-                cx.spawn({
-                    let conf = cx.props.clone();
-                    let ch = $service.to_string();
-                    let json = json.to_owned();
-                    async move {
-                        eprintln!("open");
-                        if let Ok(data) = fetch_json_reqwest(conf, ch).await {
-                            json.set(data);
-                        }
-                        eprintln!("end");
-                    }
+fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font = asset_server.load("fonts/NotoSansCJKjp-Regular.otf");
+    commands.spawn(Camera2dBundle::default());
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                // fill the entire window
+                size: Size::all(Val::Percent(100.)),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: BackgroundColor(Color::BLACK),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            // spawn the key
+            builder
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Row,
+                        margin: UiRect::top(MARGIN),
+                        ..Default::default()
+                    },
+                    ..Default::default()
                 })
+                .with_children(|builder| {
+                    spawn_nested_text_bundle(
+                        builder,
+                        font.clone(),
+                        ACTIVE_CHANNEL_COLOR,
+                        UiRect::right(MARGIN),
+                        "NHK綜合",
+                   );
+                    spawn_nested_text_bundle(
+                        builder,
+                        font.clone(),
+                        JUSTIFY_CONTENT_COLOR,
+                        UiRect::right(MARGIN),
+                        "Eテレ",
+                   );
+                    spawn_nested_text_bundle(
+                        builder,
+                        font.clone(),
+                        JUSTIFY_CONTENT_COLOR,
+                        UiRect::right(MARGIN),
+                        "ラジオ第1",
+                   );
+                    spawn_nested_text_bundle(
+                        builder,
+                        font.clone(),
+                        JUSTIFY_CONTENT_COLOR,
+                        UiRect::right(MARGIN),
+                        "ラジオ第2",
+                   );
+                    spawn_nested_text_bundle(
+                        builder,
+                        font.clone(),
+                        JUSTIFY_CONTENT_COLOR,
+                        UiRect::right(MARGIN),
+                        "NHK FM",
+                   );
+                });
+
+            builder
+                .spawn(NodeBundle {
+                    style: Style {
+                        min_size: Size::new(Val::Px(850.), Val::Px(1020.)),
+                        flex_direction: FlexDirection::Column,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .with_children(|builder| {
+                    // spawn one child node for each combination of `AlignItems` and `JustifyContent`
+                    // let justifications = [
+                    //     JustifyContent::FlexStart,
+                    //     JustifyContent::Center,
+                    //     JustifyContent::FlexEnd,
+                    //     JustifyContent::SpaceEvenly,
+                    //     JustifyContent::SpaceAround,
+                    //     JustifyContent::SpaceBetween,
+                    // ];
+                    // let alignments = [
+                    //     AlignItems::Baseline,
+                    //     AlignItems::FlexStart,
+                    //     AlignItems::Center,
+                    //     AlignItems::FlexEnd,
+                    //     AlignItems::Stretch,
+                    // ];
+                    builder
+                        .spawn(NodeBundle {
+                            style: Style {
+                                flex_direction: FlexDirection::Row,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        })
+                        .with_children(|builder| {
+                            spawn_child_node(
+                                builder,
+                                font.clone(),
+                                AlignItems::Baseline,
+                                JustifyContent::Center,
+                            );
+                        });
+                });
+        });
+}
+
+fn spawn_child_node(
+    builder: &mut ChildBuilder,
+    font: Handle<Font>,
+    align_items: AlignItems,
+    justify_content: JustifyContent,
+) {
+    builder
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                align_items,
+                justify_content,
+                size: Size::all(Val::Px(160.)),
+                margin: UiRect::all(MARGIN),
+                ..Default::default()
+            },
+            background_color: BackgroundColor(Color::DARK_GRAY),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            let labels = [
+                ("align_items:NHKナウ", ACTIVE_CHANNEL_COLOR, 0.),
+                ("justify_content:チャンネル", JUSTIFY_CONTENT_COLOR, 3.),
+                // (format!("{align_items:?}"), ACTIVE_CHANNEL_COLOR, 0.),
+                // (format!("{justify_content:?}"), JUSTIFY_CONTENT_COLOR, 3.),
+            ];
+            for (text, color, top_margin) in labels {
+                // We nest the text within a parent node because margins and padding can't be directly applied to text nodes currently.
+                spawn_nested_text_bundle(
+                    builder,
+                    font.clone(),
+                    color,
+                    UiRect::top(Val::Px(top_margin)),
+                    &text,
+                );
             }
-        }};
-    }
-    macro_rules! TAB_CLASS {
-        ($target: expr, $service: expr) => {
-            if $target == $service {
-                "tab tab-lifted text-lg tab-active"
-            } else {
-                "tab tab-lifted text-lg"
-            }
-        };
-    }
-    match parse_json(json.get()) {
-        Some((data, ch)) if !ch.is_empty() => {
-            let refetch = {
-                let c = cx.props.clone();
-                let ch = ch.to_string();
-                move |_| {
-                    cx.spawn({
-                        let c = c.clone();
-                        let ch = ch.clone();
-                        let js = json.to_owned();
-                        async move {
-                            if let Ok(resp) = fetch_json_reqwest(c, ch).await {
-                                js.set(resp);
-                            }
-                        }
-                    })
-                }
-            };
-            cx.render(rsx!(
-                div {
-                    class: "tabs mt-2 ml-2",
-                    for s in SERVICES.iter() {
-                        button { class: TAB_CLASS!(s.0, ch), onclick: Fetch!(s.0), "{s.1}"}
-                    }
+        });
+}
+
+fn spawn_nested_text_bundle(
+    builder: &mut ChildBuilder,
+    font: Handle<Font>,
+    background_color: Color,
+    margin: UiRect,
+    text: &str,
+) {
+    builder
+        .spawn(NodeBundle {
+            style: Style {
+                margin,
+                padding: UiRect {
+                    top: Val::Px(1.),
+                    left: Val::Px(5.),
+                    right: Val::Px(5.),
+                    bottom: Val::Px(1.),
                 },
-                div {
-                    class: "grid bg-base-300 p-0 mx-2 drop-shadow-xl",
-                    table {
-                        class:"table table-compact p-0 mt-0 w-full text-white bg-red-600 border-red-600 border-y-2 border-solid border-0 border-indigo-600",
-                        tr {
-                            th { "開始時間" }
-                            th {
-                                class: "text-right",
-                                button {
-                                    class: "btn btn-outline btn-sm text-neutral-200",
-                                    onclick: refetch,
-                                    "表示情報更新"
-                                }
-                            }
-                        }
-                        for p in PROGRAMS.iter() {
-                            tr {
-                                class: p.1,
-                                td {
-                                    DateTime::parse_from_rfc3339(data[p.0]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
-                                }
-                                td {
-                                    data[p.0]["title"].as_str(),
-                                }
-                            }
-                            tr {
-                                class: p.1,
-                                td {
-                                    colspan: 2,
-                                    class: "whitespace-normal pl-8 w-4/5 text-sm",
-                                    data[p.0]["subtitle"].as_str(),
-                                }
-                            }
-                        }
-                    }
-                })
-            )
-        }
-        Some(_) => cx.render(rsx!(
-            div {
-                class: "tabs mt-2 ml-2",
-                for s in SERVICES.iter() {
-                    button { class: TAB_CLASS!(s.0, ""), onclick: Fetch!(s.0), "{s.1}"}
-                }
+                ..Default::default()
             },
-            div {
-                class: "grid grid-cols-1 place-items-center h-[300px]",
-                "サービスを選んで下さい"
-            }
-        )),
-        _ => cx.render(rsx!(
-            div {
-                class: "tabs mt-2 ml-2",
-                for s in SERVICES.iter() {
-                    button { class: TAB_CLASS!(s.0, ""), onclick: Fetch!(s.0), "{s.1}"}
-                }
-            },
-            div {
-                class: "grid grid-cols-1 place-items-center h-[300px]",
-                div {
-                    class: "radial-progress animate-spin w-20 h-20",
-                    style: "--value:70;",
-                    ""
-                }
-            }
-        )),
-    }
-}
-
-async fn fetch_json_reqwest(config: AppConfig, service: String) -> Result<Value, ()> {
-    let base = format!(
-        "https://api.nhk.or.jp/v2/pg/now/{}/{}.json?key={}",
-        config.area, service, &config.apikey
-    );
-    println!("1️⃣:build");
-    let client = reqwest::Client::builder()
-        // .timeout(core::time::Duration::from_secs(8))
-        // .connect_timeout(core::time::Duration::from_secs(8))
-        // .pool_idle_timeout(core::time::Duration::from_secs(4))
-        // .tcp_keepalive(None)
-        .build()
-        .unwrap();
-    println!("2️⃣:send");
-    let buf = client
-        .get(base)
-        .send()
-        .await
-        .unwrap()
-        .bytes()
-        .await
-        .unwrap();
-    println!("3️⃣:received");
-
-    let str = String::from_utf8_lossy(buf.as_ref());
-    let json: Value = serde_json::from_str(str.to_string().as_str()).expect("invalid json");
-    Ok(json)
-}
-
-fn parse_json(json: &Value) -> Option<(Value, String)> {
-    if let Some(list) = json.get("nowonair_list") {
-        for ch in ["g1", "e1", "r1", "r2", "r3"] {
-            if let Some(target) = list.get(ch) {
-                return Some((target.clone(), ch.to_string()));
-            }
-        }
-    }
-    if json.get("NO").is_some() {
-        return Some((json.clone(), "".to_string()));
-    }
-    None
+            background_color: BackgroundColor(background_color),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            builder.spawn(TextBundle::from_section(
+                text,
+                TextStyle {
+                    font,
+                    font_size: 24.0,
+                    color: Color::BLACK,
+                },
+            ));
+        });
 }
