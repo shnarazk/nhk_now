@@ -6,8 +6,7 @@ edition = "2021"
 [dependencies]
 chrono = { version = "^0.4" }
 clap = { version = "^4.1", features = ["derive", "env"] }
-bevy = { path = "../bevy" }
-# bevy = "^0.10.1"
+bevy = { git = "https://github.com/bevyengine/bevy.git", branch = "main" }
 hyper = { version = "^0.14", features = ["full"] }
 hyper-tls = { version = "^0.5" }
 reqwest = "0.11.16"

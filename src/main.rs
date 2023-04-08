@@ -66,36 +66,36 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                         font.clone(),
                         ACTIVE_CHANNEL_COLOR,
                         UiRect::right(MARGIN),
-                        "NHK綜合",
-                   );
+                        "NHK総合",
+                    );
                     spawn_nested_text_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         "Eテレ",
-                   );
+                    );
                     spawn_nested_text_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         "ラジオ第1",
-                   );
+                    );
                     spawn_nested_text_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         "ラジオ第2",
-                   );
+                    );
                     spawn_nested_text_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         "NHK FM",
-                   );
+                    );
                 });
 
             builder
