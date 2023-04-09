@@ -3,7 +3,6 @@ use {
         prelude::*,
         tasks::{AsyncComputeTaskPool, Task},
     },
-    // chrono::prelude::*,
     // chrono::DateTime,
     clap::Parser,
     hyper::Client,
@@ -11,6 +10,20 @@ use {
     serde_json::Value,
 };
 
+#[allow(dead_code)]
+const SERVICES: [(&str, &str); 5] = [
+    ("g1", "NHK総合1"),
+    ("e1", "NHKEテレ1"),
+    ("r1", "NHKラジオ第1"),
+    ("r2", "NHKラジオ第2"),
+    ("r3", "NHKFM"),
+];
+#[allow(dead_code)]
+const TIMELINE: [(&str, &str); 3] = [
+    ("following", "bg-slate-100 text-gray-600"),
+    ("present", "bg-slate-200 text-black"),
+    ("previous", "bg-slate-400 text-gray-800"),
+];
 const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.066, 0.349);
 const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.102, 0.522, 1.);
 const MARGIN: Val = Val::Px(5.);
@@ -34,21 +47,6 @@ struct AppConfig {
     #[clap(long = "headless")]
     headless: bool,
 }
-
-#[allow(dead_code)]
-const SERVICES: [(&str, &str); 5] = [
-    ("g1", "NHK総合1"),
-    ("e1", "NHKEテレ1"),
-    ("r1", "NHKラジオ第1"),
-    ("r2", "NHKラジオ第2"),
-    ("r3", "NHKFM"),
-];
-#[allow(dead_code)]
-const PROGRAMS: [(&str, &str); 3] = [
-    ("following", "bg-slate-100 text-gray-600"),
-    ("present", "bg-slate-200 text-black"),
-    ("previous", "bg-slate-400 text-gray-800"),
-];
 
 fn main() {
     App::new()
