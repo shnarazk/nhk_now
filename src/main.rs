@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    tasks::{AsyncComputeTaskPool, Task},
+};
 // use {chrono::DateTime, clap::Parser, serde_json::Value};
 
 const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.066, 0.349);
@@ -30,8 +33,8 @@ fn main() {
             }),
             ..Default::default()
         }))
-        .add_systems(Startup, spawn_layout)
-        .add_systems(Update, button_system)
+        .add_systems(Startup, (spawn_layout, spawn_tasks))
+        .add_systems(Update, (button_system, handle_tasks))
         .run()
 }
 
@@ -279,4 +282,17 @@ fn button_system(
             }
         }
     }
+}
+
+#[derive(Component)]
+struct ProgramJson(Task<String>);
+
+fn spawn_tasks(mut commands: Commands) {
+    let thread_pool = AsyncComputeTaskPool::get();
+    let task = thread_pool.spawn(async move { "a".to_string() });
+    commands.spawn(ProgramJson(task));
+}
+
+fn handle_tasks(mut _commands: Commands, mut _tasks: Query<(Entity, &mut ProgramJson)>) {
+    // TODO:
 }
