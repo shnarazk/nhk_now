@@ -2,6 +2,7 @@ use {
     bevy::{
         prelude::*,
         tasks::{AsyncComputeTaskPool, Task},
+        winit::WinitSettings,
     },
     // chrono::DateTime,
     clap::Parser,
@@ -16,7 +17,7 @@ const SERVICES: [(&str, &str); 5] = [
     ("e1", "NHKEテレ1"),
     ("r1", "NHKラジオ第1"),
     ("r2", "NHKラジオ第2"),
-    ("r3", "NHKFM"),
+    ("r3", "NHK FM"),
 ];
 #[allow(dead_code)]
 const TIMELINE: [(&str, &str); 3] = [
@@ -58,6 +59,7 @@ fn main() {
             }),
             ..Default::default()
         }))
+        .insert_resource(WinitSettings::desktop_app())
         .add_systems(Startup, (spawn_layout, spawn_tasks))
         .add_systems(Update, (button_system, handle_tasks))
         .run()
@@ -95,28 +97,28 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                         font.clone(),
                         ACTIVE_CHANNEL_COLOR,
                         UiRect::right(MARGIN),
-                        "NHK総合",
+                        "NHK総合1",
+                   );
+                    spawn_styled_button_bundle(
+                        builder,
+                        font.clone(),
+                        JUSTIFY_CONTENT_COLOR,
+                        UiRect::right(MARGIN),
+                        "NHKEテレ1",
+                   );
+                    spawn_styled_button_bundle(
+                        builder,
+                        font.clone(),
+                        JUSTIFY_CONTENT_COLOR,
+                        UiRect::right(MARGIN),
+                        "NHKラジオ第1",
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
-                        "Eテレ",
-                    );
-                    spawn_styled_button_bundle(
-                        builder,
-                        font.clone(),
-                        JUSTIFY_CONTENT_COLOR,
-                        UiRect::right(MARGIN),
-                        "ラジオ第1",
-                    );
-                    spawn_styled_button_bundle(
-                        builder,
-                        font.clone(),
-                        JUSTIFY_CONTENT_COLOR,
-                        UiRect::right(MARGIN),
-                        "ラジオ第2",
+                        "NHKラジオ第2",
                     );
                     spawn_styled_button_bundle(
                         builder,
@@ -316,10 +318,14 @@ fn button_system(
         let text = text_query.get_mut(children[0]).unwrap();
         match *interaction {
             Interaction::Clicked => {
-                info!("{text:?}");
                 // text.sections[0].value = "更新中".to_string();
                 // *color = PRESSED_BUTTON.into();
                 // TODO: how to run the async task here?
+                let label = text.sections[0].value.as_str();
+                let Some((ch, _)) = SERVICES.iter().find(|(_,v)| *v == label ) else {
+                    return;
+                };
+                info!("{:?}", ch);
             }
             Interaction::Hovered => {
                 // text.sections[0].value = "更新".to_string();
