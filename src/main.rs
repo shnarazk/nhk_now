@@ -31,6 +31,7 @@ fn main() {
             ..Default::default()
         }))
         .add_systems(Startup, spawn_layout)
+        .add_systems(Update, button_system)
         .run()
 }
 
@@ -140,6 +141,41 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                                 JustifyContent::Center,
                             );
                         });
+                    builder
+                        .spawn(NodeBundle {
+                            style: Style {
+                                size: Size::width(Val::Percent(100.0)),
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::Center,
+                                ..default()
+                            },
+                            ..default()
+                        })
+                        .with_children(|parent| {
+                            parent
+                                .spawn(ButtonBundle {
+                                    style: Style {
+                                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                                        // horizontally center child text
+                                        justify_content: JustifyContent::Center,
+                                        // vertically center child text
+                                        align_items: AlignItems::Center,
+                                        ..default()
+                                    },
+                                    background_color: NORMAL_BUTTON.into(),
+                                    ..default()
+                                })
+                                .with_children(|parent| {
+                                    parent.spawn(TextBundle::from_section(
+                                        "button",
+                                        TextStyle {
+                                            font: font.clone(),
+                                            font_size: 40.0,
+                                            color: Color::rgb(0.9, 0.9, 0.9),
+                                        },
+                                    ));
+                                });
+                        });
                 });
         });
 }
@@ -177,7 +213,7 @@ fn spawn_child_node(
                     font.clone(),
                     color,
                     UiRect::top(Val::Px(top_margin)),
-                    &text,
+                    text,
                 );
             }
         });
@@ -215,4 +251,32 @@ fn spawn_nested_text_bundle(
                 },
             ));
         });
+}
+
+const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
+const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
+const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
+type ButtonLike = (Changed<Interaction>, With<Button>);
+
+fn button_system(
+    mut interaction_query: Query<(&Interaction, &mut BackgroundColor, &Children), ButtonLike>,
+    mut text_query: Query<&mut Text>,
+) {
+    for (interaction, mut color, children) in &mut interaction_query {
+        let mut text = text_query.get_mut(children[0]).unwrap();
+        match *interaction {
+            Interaction::Clicked => {
+                text.sections[0].value = "更新中".to_string();
+                *color = PRESSED_BUTTON.into();
+            }
+            Interaction::Hovered => {
+                text.sections[0].value = "更新".to_string();
+                *color = HOVERED_BUTTON.into();
+            }
+            Interaction::None => {
+                text.sections[0].value = "プログラム".to_string();
+                *color = NORMAL_BUTTON.into();
+            }
+        }
+    }
 }
