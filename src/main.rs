@@ -2,7 +2,6 @@ use {
     bevy::{
         prelude::*,
         // tasks::{AsyncComputeTaskPool, Task},
-        tasks::{IoTaskPool, Task},
         winit::WinitSettings,
     },
     // chrono::DateTime,
@@ -31,7 +30,7 @@ const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.066, 0.349);
 const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.102, 0.522, 1.);
 const MARGIN: Val = Val::Px(2.);
 
-#[derive(Clone, Component, Debug, Default, Eq, PartialEq, Parser)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, Resource)]
 #[clap(author, version, about)]
 struct AppConfig {
     /// area code
@@ -45,6 +44,7 @@ struct AppConfig {
 }
 
 fn main() {
+    let app_config = AppConfig::parse();
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -55,9 +55,9 @@ fn main() {
             ..Default::default()
         }))
         .add_plugin(ReqwestPlugin)
-        // .insert_resource(WinitSettings::desktop_app())
+        .insert_resource(WinitSettings::desktop_app())
+        .insert_resource(app_config)
         .insert_resource(ReqestTicket(1))
-        .add_systems(Startup, set_config)
         .add_systems(Startup, spawn_layout)
         .add_systems(
             Update,
@@ -69,10 +69,6 @@ fn main() {
             ),
         )
         .run()
-}
-
-fn set_config(mut commands: Commands, _asset_server: Res<AssetServer>) {
-    commands.spawn(AppConfig::default());
 }
 
 fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -314,32 +310,18 @@ fn spawn_styled_button_bundle(
 type ButtonLike = (Changed<Interaction>, With<Button>);
 
 fn button_system(
-    mut config_query: Query<&mut AppConfig>,
+    mut config: ResMut<AppConfig>,
     mut interaction_query: Query<(&Interaction, &Children), ButtonLike>,
     mut text_query: Query<&mut Text>,
+    mut ch: ResMut<ReqestTicket>,
 ) {
-    let mut config = config_query.get_single_mut().unwrap();
     for (interaction, children) in &mut interaction_query {
         match *interaction {
             Interaction::Clicked => {
                 let text = text_query.get_mut(children[0]).unwrap();
                 let label = text.sections[0].value.as_str();
                 config.service = label.to_string();
-
-                {
-                    let pool = IoTaskPool::get();
-                    let config = config.clone();
-                    let label = label.to_string();
-                    dbg!();
-                    let _task = pool.spawn(async move {
-                        dbg!();
-                        let Ok(json) = fetch_json_reqwest(&config, &label).await else {
-                            dbg!();
-                        return serde_json::from_str("{status: \"no data\"}").unwrap();
-                    };
-                        dbg!(json)
-                    });
-                }
+                ch.0 = 1;
             }
             _ => (),
         }
@@ -347,11 +329,10 @@ fn button_system(
 }
 
 fn button_system2(
-    config_query: Query<&AppConfig>,
+    config: Res<AppConfig>,
     mut interaction_query: Query<(&Children, &mut BackgroundColor), With<Button>>,
     mut text_query: Query<&mut Text>,
 ) {
-    let config = config_query.get_single().unwrap();
     let service = config.service.clone();
     for (children, mut color) in &mut interaction_query {
         let text = text_query.get_mut(children[0]).unwrap();
@@ -362,78 +343,6 @@ fn button_system2(
             JUSTIFY_CONTENT_COLOR.into()
         };
     }
-}
-
-// #[derive(Component)]
-// struct ProgramJson(Task<Value>);
-
-// // we need despawn 'task' after reading the content after updating screen.
-// fn spawn_tasks(_commands: Commands) {
-//     let thread_pool = IoTaskPool::get();
-//     let config = AppConfig::default();
-//     let service = "g1".to_string();
-//     let _task = thread_pool.spawn(async move {
-//         let Ok(json) = fetch_json_reqwest(&config, &service).await else {
-//             return serde_json::from_str("{status: \"no data\"}").unwrap();
-//         };
-//         json
-//     });
-//     // commands.spawn(ProgramJson(task));
-// }
-
-// fn handle_tasks(mut _commands: Commands, mut _tasks: Query<(Entity, &mut ProgramJson)>) {
-//     // TODO:
-// }
-
-/*
-#[allow(dead_code)]
-async fn load_json(config: &AppConfig, service: &str) -> hyper::Result<Value> {
-    let area = config.area.as_deref().unwrap_or("400");
-    let key = &config.apikey;
-    // "https://api.nhk.or.jp/v2/pg/list/{area}/{service}/{date}.json?key={key}"
-    let client = Client::builder().build::<_, hyper::Body>(HttpsConnector::new());
-    let base = format!("https://api.nhk.or.jp/v2/pg/now/{area}/{service}.json?key={key}")
-        .parse()
-        .expect("wrong url");
-    dbg!(&base);
-    let res = client.get(base).await?;
-    dbg!();
-    let buf = hyper::body::to_bytes(res).await?;
-    let str = String::from_utf8_lossy(buf.as_ref());
-    // dbg!(&str);
-    let json: Value = serde_json::from_str(str.to_string().as_str()).expect("invalid json");
-    // dbg!(&json);
-    Ok(json)
-}
-*/
-
-async fn fetch_json_reqwest(config: &AppConfig, service: &String) -> Result<Value, ()> {
-    let base = format!(
-        "https://api.nhk.or.jp/v2/pg/now/{}/{}.json?key={}",
-        config.area, service, &config.apikey
-    );
-    println!("1️⃣:build");
-    let client = reqwest::Client::builder()
-        // .timeout(core::time::Duration::from_secs(8))
-        // .connect_timeout(core::time::Duration::from_secs(8))
-        // .pool_idle_timeout(core::time::Duration::from_secs(4))
-        // .tcp_keepalive(None)
-        .build()
-        .unwrap();
-    println!("2️⃣:send");
-    let buf = client
-        .get(base)
-        .send()
-        .await
-        .unwrap()
-        .bytes()
-        .await
-        .unwrap();
-    println!("3️⃣:received");
-
-    let str = String::from_utf8_lossy(buf.as_ref());
-    let json: Value = serde_json::from_str(str.to_string().as_str()).expect("invalid json");
-    Ok(json)
 }
 
 #[allow(dead_code)]
@@ -465,16 +374,16 @@ fn send_requests(mut commands: Commands, mut ch: ResMut<ReqestTicket>) {
         return;
     };
     let req = reqwest::Request::new(reqwest::Method::GET, base);
-    let req = ReqwestRequest(Some(req));
     ch.0 = 0;
-    commands.spawn(req);
+    commands.spawn(ReqwestRequest(Some(req)));
     dbg!();
 }
 
 fn handle_responses(mut commands: Commands, results: Query<(Entity, &ReqwestBytesResult)>) {
     for (e, res) in results.iter() {
         let string = res.as_str().unwrap();
-        info!("{string}");
+        let json: Value = serde_json::from_str(string).expect("invalid json");
+        info!("{json:?}");
 
         // Done with this entity
         commands.entity(e).despawn_recursive();
