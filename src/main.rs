@@ -7,6 +7,7 @@ use {
     },
     // chrono::DateTime,
     clap::Parser,
+    nhk_now::reqwest_plugin::*,
     // hyper::Client,
     // hyper_tls::HttpsConnector,
     serde_json::Value,
@@ -53,10 +54,20 @@ fn main() {
             }),
             ..Default::default()
         }))
+        .add_plugin(ReqwestPlugin)
         // .insert_resource(WinitSettings::desktop_app())
+        .insert_resource(ReqestTicket(1))
         .add_systems(Startup, set_config)
-        .add_systems(Startup, (spawn_layout, spawn_tasks))
-        .add_systems(Update, (button_system, button_system2, handle_tasks))
+        .add_systems(Startup, spawn_layout)
+        .add_systems(
+            Update,
+            (
+                button_system,
+                send_requests,
+                handle_responses,
+                button_system2,
+            ),
+        )
         .run()
 }
 
@@ -353,26 +364,26 @@ fn button_system2(
     }
 }
 
-#[derive(Component)]
-struct ProgramJson(Task<Value>);
+// #[derive(Component)]
+// struct ProgramJson(Task<Value>);
 
-// we need despawn 'task' after reading the content after updating screen.
-fn spawn_tasks(_commands: Commands) {
-    let thread_pool = IoTaskPool::get();
-    let config = AppConfig::default();
-    let service = "g1".to_string();
-    let _task = thread_pool.spawn(async move {
-        let Ok(json) = fetch_json_reqwest(&config, &service).await else {
-            return serde_json::from_str("{status: \"no data\"}").unwrap();
-        };
-        json
-    });
-    // commands.spawn(ProgramJson(task));
-}
+// // we need despawn 'task' after reading the content after updating screen.
+// fn spawn_tasks(_commands: Commands) {
+//     let thread_pool = IoTaskPool::get();
+//     let config = AppConfig::default();
+//     let service = "g1".to_string();
+//     let _task = thread_pool.spawn(async move {
+//         let Ok(json) = fetch_json_reqwest(&config, &service).await else {
+//             return serde_json::from_str("{status: \"no data\"}").unwrap();
+//         };
+//         json
+//     });
+//     // commands.spawn(ProgramJson(task));
+// }
 
-fn handle_tasks(mut _commands: Commands, mut _tasks: Query<(Entity, &mut ProgramJson)>) {
-    // TODO:
-}
+// fn handle_tasks(mut _commands: Commands, mut _tasks: Query<(Entity, &mut ProgramJson)>) {
+//     // TODO:
+// }
 
 /*
 #[allow(dead_code)]
@@ -438,4 +449,34 @@ fn parse_json(json: &Value) -> Option<(Value, String)> {
         return Some((json.clone(), "".to_string()));
     }
     None
+}
+
+#[derive(Debug, Resource)]
+struct ReqestTicket(u8);
+
+fn send_requests(mut commands: Commands, mut ch: ResMut<ReqestTicket>) {
+    if ch.0 == 0 {
+        return;
+    }
+    let Ok(base) = format!(
+        "https://api.nhk.or.jp/v2/pg/now/{}/{}.json?key={}",
+        400, "g1", "",
+    ).as_str().try_into() else {
+        return;
+    };
+    let req = reqwest::Request::new(reqwest::Method::GET, base);
+    let req = ReqwestRequest(Some(req));
+    ch.0 = 0;
+    commands.spawn(req);
+    dbg!();
+}
+
+fn handle_responses(mut commands: Commands, results: Query<(Entity, &ReqwestBytesResult)>) {
+    for (e, res) in results.iter() {
+        let string = res.as_str().unwrap();
+        info!("{string}");
+
+        // Done with this entity
+        commands.entity(e).despawn_recursive();
+    }
 }
