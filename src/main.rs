@@ -27,7 +27,7 @@ const TIMELINE: [(&str, &str); 3] = [
 ];
 const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.066, 0.349);
 const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.102, 0.522, 1.);
-const MARGIN: Val = Val::Px(5.);
+const MARGIN: Val = Val::Px(2.);
 
 #[derive(Clone, Component, Debug, Default, Parser)]
 #[clap(author, version, about)]
@@ -59,10 +59,15 @@ fn main() {
             }),
             ..Default::default()
         }))
-        .insert_resource(WinitSettings::desktop_app())
+        // .insert_resource(WinitSettings::desktop_app())
+        .add_systems(Startup, set_config)
         .add_systems(Startup, (spawn_layout, spawn_tasks))
-        .add_systems(Update, (button_system, handle_tasks))
+        .add_systems(Update, (button_system, button_system2, handle_tasks))
         .run()
+}
+
+fn set_config(mut commands: Commands, _asset_server: Res<AssetServer>) {
+    commands.spawn(AppConfig::default());
 }
 
 fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -98,14 +103,14 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                         ACTIVE_CHANNEL_COLOR,
                         UiRect::right(MARGIN),
                         "NHK総合1",
-                   );
+                    );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         "NHKEテレ1",
-                   );
+                    );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
@@ -268,31 +273,24 @@ fn spawn_styled_button_bundle(
                 },
                 ..Default::default()
             },
-            background_color: BackgroundColor(background_color),
+            // background_color: BackgroundColor(background_color),
             ..Default::default()
         })
         .with_children(|builder| {
             builder
                 .spawn(ButtonBundle {
                     style: Style {
-                        size: Size::new(Val::Px(100.0), Val::Px(30.0)),
+                        size: Size::new(Val::Px(120.0), Val::Px(30.0)),
                         // horizontally center child text
                         justify_content: JustifyContent::Center,
                         // vertically center child text
                         align_items: AlignItems::Center,
                         ..default()
                     },
-                    background_color: background_color.into(),
+                    background_color: BackgroundColor(background_color),
                     ..default()
                 })
                 .with_children(|parent| {
-                    // spawn_nested_text_bundle(
-                    //     parent,
-                    //     font.clone(),
-                    //     ACTIVE_CHANNEL_COLOR,
-                    //     UiRect::right(MARGIN),
-                    //     "NHK総合",
-                    // )
                     parent.spawn(TextBundle::from_section(
                         text,
                         TextStyle {
@@ -305,54 +303,61 @@ fn spawn_styled_button_bundle(
         });
 }
 
-const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
-const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
-const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
+// const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
+// const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
+// const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
 type ButtonLike = (Changed<Interaction>, With<Button>);
 
 fn button_system(
-    mut interaction_query: Query<(&Interaction, &mut BackgroundColor, &Children), ButtonLike>,
+    mut config_query: Query<&mut AppConfig>,
+    mut interaction_query: Query<(&Interaction, &Children), ButtonLike>,
     mut text_query: Query<&mut Text>,
 ) {
-    for (interaction, mut _color, children) in &mut interaction_query {
-        let text = text_query.get_mut(children[0]).unwrap();
+    let mut config = config_query.get_single_mut().unwrap();
+    for (interaction, children) in &mut interaction_query {
         match *interaction {
             Interaction::Clicked => {
-                // text.sections[0].value = "更新中".to_string();
-                // *color = PRESSED_BUTTON.into();
-                // TODO: how to run the async task here?
+                let text = text_query.get_mut(children[0]).unwrap();
                 let label = text.sections[0].value.as_str();
-                let Some((ch, _)) = SERVICES.iter().find(|(_,v)| *v == label ) else {
-                    return;
-                };
-                info!("{:?}", ch);
+                config.service = Some(label.to_string());
             }
-            Interaction::Hovered => {
-                // text.sections[0].value = "更新".to_string();
-                // *color = HOVERED_BUTTON.into();
-            }
-            Interaction::None => {
-                // text.sections[0].value = "プログラム".to_string();
-                // *color = NORMAL_BUTTON.into();
-            }
+            _ => (),
         }
+    }
+}
+
+fn button_system2(
+    config_query: Query<&AppConfig>,
+    mut interaction_query: Query<(&Children, &mut BackgroundColor), With<Button>>,
+    mut text_query: Query<&mut Text>,
+) {
+    let null = "".to_string();
+    let config = config_query.get_single().unwrap();
+    let service = config.service.as_ref().unwrap_or(&null).to_string();
+    for (children, mut color) in &mut interaction_query {
+        let text = text_query.get_mut(children[0]).unwrap();
+        let label = text.sections[0].value.as_str();
+        *color = if service == label {
+            ACTIVE_CHANNEL_COLOR.into()
+        } else {
+            JUSTIFY_CONTENT_COLOR.into()
+        };
     }
 }
 
 #[derive(Component)]
 struct ProgramJson(Task<Value>);
 // we need despawn 'task' after reading the content after updating screen.
-fn spawn_tasks(mut commands: Commands) {
-    return;
-    let thread_pool = AsyncComputeTaskPool::get();
-    let task = thread_pool.spawn(async move {
-        let config = AppConfig::default();
-        let Ok(json) = load_json(&config, "g1").await else {
-            return serde_json::from_str("{status: \"no data\"}").unwrap();
-        };
-        json
-    });
-    commands.spawn(ProgramJson(task));
+fn spawn_tasks(_commands: Commands) {
+    // let thread_pool = AsyncComputeTaskPool::get();
+    // let task = thread_pool.spawn(async move {
+    //     let config = AppConfig::default();
+    //     let Ok(json) = load_json(&config, "g1").await else {
+    //         return serde_json::from_str("{status: \"no data\"}").unwrap();
+    //     };
+    //     json
+    // });
+    // commands.spawn(ProgramJson(task));
 }
 
 fn handle_tasks(mut _commands: Commands, mut _tasks: Query<(Entity, &mut ProgramJson)>) {
