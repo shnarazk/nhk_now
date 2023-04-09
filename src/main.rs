@@ -90,35 +90,35 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ..Default::default()
                 })
                 .with_children(|builder| {
-                    spawn_nested_text_bundle(
+                    spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         ACTIVE_CHANNEL_COLOR,
                         UiRect::right(MARGIN),
                         "NHK総合",
                     );
-                    spawn_nested_text_bundle(
+                    spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         "Eテレ",
                     );
-                    spawn_nested_text_bundle(
+                    spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         "ラジオ第1",
                     );
-                    spawn_nested_text_bundle(
+                    spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         "ラジオ第2",
                     );
-                    spawn_nested_text_bundle(
+                    spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
@@ -168,41 +168,6 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                                 AlignItems::Baseline,
                                 JustifyContent::Center,
                             );
-                        });
-                    builder
-                        .spawn(NodeBundle {
-                            style: Style {
-                                size: Size::width(Val::Percent(100.0)),
-                                align_items: AlignItems::Center,
-                                justify_content: JustifyContent::Center,
-                                ..default()
-                            },
-                            ..default()
-                        })
-                        .with_children(|parent| {
-                            parent
-                                .spawn(ButtonBundle {
-                                    style: Style {
-                                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                                        // horizontally center child text
-                                        justify_content: JustifyContent::Center,
-                                        // vertically center child text
-                                        align_items: AlignItems::Center,
-                                        ..default()
-                                    },
-                                    background_color: NORMAL_BUTTON.into(),
-                                    ..default()
-                                })
-                                .with_children(|parent| {
-                                    parent.spawn(TextBundle::from_section(
-                                        "button",
-                                        TextStyle {
-                                            font: font.clone(),
-                                            font_size: 40.0,
-                                            color: Color::rgb(0.9, 0.9, 0.9),
-                                        },
-                                    ));
-                                });
                         });
                 });
         });
@@ -281,6 +246,63 @@ fn spawn_nested_text_bundle(
         });
 }
 
+fn spawn_styled_button_bundle(
+    builder: &mut ChildBuilder,
+    font: Handle<Font>,
+    background_color: Color,
+    margin: UiRect,
+    text: &str,
+) {
+    builder
+        .spawn(NodeBundle {
+            style: Style {
+                margin,
+                flex_direction: FlexDirection::Row,
+                padding: UiRect {
+                    top: Val::Px(1.),
+                    left: Val::Px(5.),
+                    right: Val::Px(5.),
+                    bottom: Val::Px(1.),
+                },
+                ..Default::default()
+            },
+            background_color: BackgroundColor(background_color),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            builder
+                .spawn(ButtonBundle {
+                    style: Style {
+                        size: Size::new(Val::Px(100.0), Val::Px(30.0)),
+                        // horizontally center child text
+                        justify_content: JustifyContent::Center,
+                        // vertically center child text
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    background_color: background_color.into(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    // spawn_nested_text_bundle(
+                    //     parent,
+                    //     font.clone(),
+                    //     ACTIVE_CHANNEL_COLOR,
+                    //     UiRect::right(MARGIN),
+                    //     "NHK総合",
+                    // )
+                    parent.spawn(TextBundle::from_section(
+                        text,
+                        TextStyle {
+                            font,
+                            font_size: 24.0,
+                            color: Color::BLACK,
+                        },
+                    ));
+                });
+        });
+}
+
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
 const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
@@ -290,21 +312,22 @@ fn button_system(
     mut interaction_query: Query<(&Interaction, &mut BackgroundColor, &Children), ButtonLike>,
     mut text_query: Query<&mut Text>,
 ) {
-    for (interaction, mut color, children) in &mut interaction_query {
-        let mut text = text_query.get_mut(children[0]).unwrap();
+    for (interaction, mut _color, children) in &mut interaction_query {
+        let text = text_query.get_mut(children[0]).unwrap();
         match *interaction {
             Interaction::Clicked => {
-                text.sections[0].value = "更新中".to_string();
-                *color = PRESSED_BUTTON.into();
+                info!("{text:?}");
+                // text.sections[0].value = "更新中".to_string();
+                // *color = PRESSED_BUTTON.into();
                 // TODO: how to run the async task here?
             }
             Interaction::Hovered => {
-                text.sections[0].value = "更新".to_string();
-                *color = HOVERED_BUTTON.into();
+                // text.sections[0].value = "更新".to_string();
+                // *color = HOVERED_BUTTON.into();
             }
             Interaction::None => {
-                text.sections[0].value = "プログラム".to_string();
-                *color = NORMAL_BUTTON.into();
+                // text.sections[0].value = "プログラム".to_string();
+                // *color = NORMAL_BUTTON.into();
             }
         }
     }
@@ -314,6 +337,7 @@ fn button_system(
 struct ProgramJson(Task<Value>);
 // we need despawn 'task' after reading the content after updating screen.
 fn spawn_tasks(mut commands: Commands) {
+    return;
     let thread_pool = AsyncComputeTaskPool::get();
     let task = thread_pool.spawn(async move {
         let config = AppConfig::default();
