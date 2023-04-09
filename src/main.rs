@@ -1,12 +1,39 @@
-use bevy::{
-    prelude::*,
-    tasks::{AsyncComputeTaskPool, Task},
+use {
+    bevy::{
+        prelude::*,
+        tasks::{AsyncComputeTaskPool, Task},
+    },
+    // chrono::prelude::*,
+    // chrono::DateTime,
+    clap::Parser,
+    hyper::Client,
+    hyper_tls::HttpsConnector,
+    serde_json::Value,
 };
-// use {chrono::DateTime, clap::Parser, serde_json::Value};
 
 const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.066, 0.349);
 const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.102, 0.522, 1.);
 const MARGIN: Val = Val::Px(5.);
+
+#[derive(Clone, Component, Debug, Default, Parser)]
+#[clap(author, version, about)]
+struct AppConfig {
+    /// area code
+    #[clap(short = 'a')]
+    area: Option<String>,
+    /// service (channel)
+    #[clap(short = 's')]
+    service: Option<String>,
+    /// date
+    #[clap(short = 'd')]
+    date: Option<String>,
+    /// API key
+    #[clap(short = 'k', long = "key", env)]
+    apikey: String,
+    /// Just download the csv w/o GUI
+    #[clap(long = "headless")]
+    headless: bool,
+}
 
 #[allow(dead_code)]
 const SERVICES: [(&str, &str); 5] = [
@@ -285,14 +312,40 @@ fn button_system(
 }
 
 #[derive(Component)]
-struct ProgramJson(Task<String>);
+struct ProgramJson(Task<Value>);
 
 fn spawn_tasks(mut commands: Commands) {
     let thread_pool = AsyncComputeTaskPool::get();
-    let task = thread_pool.spawn(async move { "a".to_string() });
+    let task = thread_pool.spawn(async move {
+        let config = AppConfig::default();
+        let Ok(json) = load_json(&config, "g1").await else {
+            return serde_json::from_str("{status: \"no data\"}").unwrap();
+        };
+        json
+    });
     commands.spawn(ProgramJson(task));
 }
 
 fn handle_tasks(mut _commands: Commands, mut _tasks: Query<(Entity, &mut ProgramJson)>) {
     // TODO:
+}
+
+#[allow(dead_code)]
+async fn load_json(config: &AppConfig, service: &str) -> hyper::Result<Value> {
+    let area = config.area.as_deref().unwrap_or("400");
+    let key = &config.apikey;
+    // "https://api.nhk.or.jp/v2/pg/list/{area}/{service}/{date}.json?key={key}"
+    let client = Client::builder().build::<_, hyper::Body>(HttpsConnector::new());
+    let base = format!("https://api.nhk.or.jp/v2/pg/now/{area}/{service}.json?key={key}")
+        .parse()
+        .expect("wrong url");
+    dbg!(&base);
+    let res = client.get(base).await?;
+    dbg!();
+    let buf = hyper::body::to_bytes(res).await?;
+    let str = String::from_utf8_lossy(buf.as_ref());
+    // dbg!(&str);
+    let json: Value = serde_json::from_str(str.to_string().as_str()).expect("invalid json");
+    // dbg!(&json);
+    Ok(json)
 }
