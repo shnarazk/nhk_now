@@ -296,6 +296,7 @@ fn button_system(
             Interaction::Clicked => {
                 text.sections[0].value = "更新中".to_string();
                 *color = PRESSED_BUTTON.into();
+                // TODO: how to run the async task here?
             }
             Interaction::Hovered => {
                 text.sections[0].value = "更新".to_string();
@@ -311,7 +312,7 @@ fn button_system(
 
 #[derive(Component)]
 struct ProgramJson(Task<Value>);
-
+// we need despawn 'task' after reading the content after updating screen.
 fn spawn_tasks(mut commands: Commands) {
     let thread_pool = AsyncComputeTaskPool::get();
     let task = thread_pool.spawn(async move {
