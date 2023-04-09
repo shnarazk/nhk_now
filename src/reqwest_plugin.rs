@@ -31,7 +31,7 @@ pub struct ReqwestBytesResult(pub reqwest::Result<bytes::Bytes>);
 impl ReqwestBytesResult {
     pub fn as_str(&self) -> Option<&str> {
         match &self.0 {
-            Ok(string) => Some(std::str::from_utf8(&string).ok()?),
+            Ok(string) => Some(std::str::from_utf8(string).ok()?),
             Err(_) => None,
         }
     }
@@ -70,11 +70,10 @@ impl ReqwestPlugin {
 
                 let task = {
                     thread_pool.spawn(async move {
-                        let r = async_compat::Compat::new(async {
+                        async_compat::Compat::new(async {
                             client.execute(request).await?.bytes().await
                         })
-                        .await;
-                        r
+                        .await
                     })
                 };
                 // put it as a component to be polled, and remove the request, it has been handled

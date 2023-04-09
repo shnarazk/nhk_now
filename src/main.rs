@@ -12,14 +12,49 @@ use {
     serde_json::Value,
 };
 
-#[allow(dead_code)]
-const SERVICES: [(&str, &str); 5] = [
-    ("g1", "NHK総合1"),
-    ("e1", "NHKEテレ1"),
-    ("r1", "NHKラジオ第1"),
-    ("r2", "NHKラジオ第2"),
-    ("r3", "NHK FM"),
-];
+#[derive(Component, Clone, Eq, PartialEq, PartialOrd, Ord)]
+enum CurrentService {
+    None,
+    G1,
+    E1,
+    R1,
+    R2,
+    R3,
+}
+impl std::fmt::Debug for CurrentService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                CurrentService::None => "",
+                CurrentService::G1 => "g1",
+                CurrentService::E1 => "e1",
+                CurrentService::R1 => "r1",
+                CurrentService::R2 => "r2",
+                CurrentService::R3 => "r3",
+            }
+        )
+    }
+}
+
+impl std::fmt::Display for CurrentService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                CurrentService::None => "",
+                CurrentService::G1 => "NHK総合1",
+                CurrentService::E1 => "NHKEテレ1",
+                CurrentService::R1 => "NHKラジオ第1",
+                CurrentService::R2 => "NHKラジオ第2",
+                CurrentService::R3 => "NHK FM",
+            }
+        )
+    }
+}
+
 #[allow(dead_code)]
 const TIMELINE: [(&str, &str); 3] = [
     ("following", "bg-slate-100 text-gray-600"),
@@ -39,8 +74,6 @@ struct AppConfig {
     /// API key
     #[clap(short = 'k', long = "key", env)]
     apikey: String,
-    #[clap(short = 's', long = "service", env)]
-    service: String,
 }
 
 fn main() {
@@ -57,7 +90,7 @@ fn main() {
         .add_plugin(ReqwestPlugin)
         .insert_resource(WinitSettings::desktop_app())
         .insert_resource(app_config)
-        .insert_resource(ReqestTicket(1))
+        .insert_resource(ReqestTicket(CurrentService::None))
         .add_systems(Startup, spawn_layout)
         .add_systems(
             Update,
@@ -103,35 +136,35 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                         font.clone(),
                         ACTIVE_CHANNEL_COLOR,
                         UiRect::right(MARGIN),
-                        "NHK総合1",
+                        CurrentService::G1,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
-                        "NHKEテレ1",
+                        CurrentService::E1,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
-                        "NHKラジオ第1",
+                        CurrentService::R1,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
-                        "NHKラジオ第2",
+                        CurrentService::R2,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
-                        "NHK FM",
+                        CurrentService::R3,
                     );
                 });
 
@@ -144,7 +177,7 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                     },
                     ..Default::default()
                 })
-                .with_children(|builder| {
+                .with_children(|_builder| {
                     // spawn one child node for each combination of `AlignItems` and `JustifyContent`
                     // let justifications = [
                     //     JustifyContent::FlexStart,
@@ -161,26 +194,27 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                     //     AlignItems::FlexEnd,
                     //     AlignItems::Stretch,
                     // ];
-                    builder
-                        .spawn(NodeBundle {
-                            style: Style {
-                                flex_direction: FlexDirection::Row,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        })
-                        .with_children(|builder| {
-                            spawn_child_node(
-                                builder,
-                                font.clone(),
-                                AlignItems::Baseline,
-                                JustifyContent::Center,
-                            );
-                        });
+                    // builder
+                    //     .spawn(NodeBundle {
+                    //         style: Style {
+                    //             flex_direction: FlexDirection::Row,
+                    //             ..Default::default()
+                    //         },
+                    //         ..Default::default()
+                    //     })
+                    //     .with_children(|builder| {
+                    //         spawn_child_node(
+                    //             builder,
+                    //             font.clone(),
+                    //             AlignItems::Baseline,
+                    //             JustifyContent::Center,
+                    //         );
+                    //     });
                 });
         });
 }
 
+#[allow(dead_code)]
 fn spawn_child_node(
     builder: &mut ChildBuilder,
     font: Handle<Font>,
@@ -259,7 +293,7 @@ fn spawn_styled_button_bundle(
     font: Handle<Font>,
     background_color: Color,
     margin: UiRect,
-    text: &str,
+    service: CurrentService,
 ) {
     builder
         .spawn(NodeBundle {
@@ -279,21 +313,24 @@ fn spawn_styled_button_bundle(
         })
         .with_children(|builder| {
             builder
-                .spawn(ButtonBundle {
-                    style: Style {
-                        size: Size::new(Val::Px(120.0), Val::Px(30.0)),
-                        // horizontally center child text
-                        justify_content: JustifyContent::Center,
-                        // vertically center child text
-                        align_items: AlignItems::Center,
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            size: Size::new(Val::Px(120.0), Val::Px(30.0)),
+                            // horizontally center child text
+                            justify_content: JustifyContent::Center,
+                            // vertically center child text
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        background_color: BackgroundColor(background_color),
                         ..default()
                     },
-                    background_color: BackgroundColor(background_color),
-                    ..default()
-                })
+                    service.clone(),
+                ))
                 .with_children(|parent| {
                     parent.spawn(TextBundle::from_section(
-                        text,
+                        format!("{}", service),
                         TextStyle {
                             font,
                             font_size: 24.0,
@@ -310,34 +347,22 @@ fn spawn_styled_button_bundle(
 type ButtonLike = (Changed<Interaction>, With<Button>);
 
 fn button_system(
-    mut config: ResMut<AppConfig>,
-    mut interaction_query: Query<(&Interaction, &Children), ButtonLike>,
-    mut text_query: Query<&mut Text>,
-    mut ch: ResMut<ReqestTicket>,
+    mut current_service: ResMut<ReqestTicket>,
+    interaction_query: Query<(&Interaction, &CurrentService), ButtonLike>,
 ) {
-    for (interaction, children) in &mut interaction_query {
-        match *interaction {
-            Interaction::Clicked => {
-                let text = text_query.get_mut(children[0]).unwrap();
-                let label = text.sections[0].value.as_str();
-                config.service = label.to_string();
-                ch.0 = 1;
-            }
-            _ => (),
+    for (interaction, target) in &interaction_query {
+        if *interaction == Interaction::Clicked {
+            current_service.0 = target.clone();
         }
     }
 }
 
 fn button_system2(
-    config: Res<AppConfig>,
-    mut interaction_query: Query<(&Children, &mut BackgroundColor), With<Button>>,
-    mut text_query: Query<&mut Text>,
+    current_service: Res<ReqestTicket>,
+    mut interaction_query: Query<(&CurrentService, &mut BackgroundColor), With<Button>>,
 ) {
-    let service = config.service.clone();
-    for (children, mut color) in &mut interaction_query {
-        let text = text_query.get_mut(children[0]).unwrap();
-        let label = text.sections[0].value.as_str();
-        *color = if service == label {
+    for (service, mut color) in &mut interaction_query {
+        *color = if &current_service.0 == service {
             ACTIVE_CHANNEL_COLOR.into()
         } else {
             JUSTIFY_CONTENT_COLOR.into()
@@ -361,20 +386,20 @@ fn parse_json(json: &Value) -> Option<(Value, String)> {
 }
 
 #[derive(Debug, Resource)]
-struct ReqestTicket(u8);
+struct ReqestTicket(CurrentService);
 
-fn send_requests(mut commands: Commands, mut ch: ResMut<ReqestTicket>) {
-    if ch.0 == 0 {
+fn send_requests(config: Res<AppConfig>, mut commands: Commands, mut ch: ResMut<ReqestTicket>) {
+    if ch.0 == CurrentService::None {
         return;
     }
-    let Ok(base) = format!(
-        "https://api.nhk.or.jp/v2/pg/now/{}/{}.json?key={}",
-        400, "g1", "",
-    ).as_str().try_into() else {
+    let Ok(base) = dbg!(format!(
+        "https://api.nhk.or.jp/v2/pg/now/{}/{:?}.json?key={}",
+        400, ch.0, config.apikey,
+    )).as_str().try_into() else {
         return;
     };
     let req = reqwest::Request::new(reqwest::Method::GET, base);
-    ch.0 = 0;
+    ch.0 = CurrentService::None;
     commands.spawn(ReqwestRequest(Some(req)));
     dbg!();
 }
