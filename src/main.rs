@@ -1,6 +1,6 @@
 use {
     bevy::{prelude::*, winit::WinitSettings},
-    // chrono::DateTime,
+    chrono::DateTime,
     clap::Parser,
     nhk_now::reqwest_plugin::*,
     serde_json::Value,
@@ -230,113 +230,7 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                         UiRect::right(MARGIN),
                         Timeline::Previous,
                     );
-                    // spawn one child node for each combination of `AlignItems` and `JustifyContent`
-                    // let justifications = [
-                    //     JustifyContent::FlexStart,
-                    //     JustifyContent::Center,
-                    //     JustifyContent::FlexEnd,
-                    //     JustifyContent::SpaceEvenly,
-                    //     JustifyContent::SpaceAround,
-                    //     JustifyContent::SpaceBetween,
-                    // ];
-                    // let alignments = [
-                    //     AlignItems::Baseline,
-                    //     AlignItems::FlexStart,
-                    //     AlignItems::Center,
-                    //     AlignItems::FlexEnd,
-                    //     AlignItems::Stretch,
-                    // ];
-                    // builder
-                    //     .spawn(NodeBundle {
-                    //         style: Style {
-                    //             flex_direction: FlexDirection::Row,
-                    //             ..Default::default()
-                    //         },
-                    //         ..Default::default()
-                    //     })
-                    //     .with_children(|builder| {
-                    //         spawn_child_node(
-                    //             builder,
-                    //             font.clone(),
-                    //             AlignItems::Baseline,
-                    //             JustifyContent::Center,
-                    //         );
-                    //     });
                 });
-        });
-}
-
-#[allow(dead_code)]
-fn spawn_child_node(
-    builder: &mut ChildBuilder,
-    font: Handle<Font>,
-    align_items: AlignItems,
-    justify_content: JustifyContent,
-) {
-    builder
-        .spawn(NodeBundle {
-            style: Style {
-                flex_direction: FlexDirection::Column,
-                align_items,
-                justify_content,
-                size: Size::all(Val::Px(160.)),
-                margin: UiRect::all(MARGIN),
-                ..Default::default()
-            },
-            background_color: BackgroundColor(Color::DARK_GRAY),
-            ..Default::default()
-        })
-        .with_children(|builder| {
-            let labels = [
-                ("align_items:NHKナウ", ACTIVE_CHANNEL_COLOR, 0.),
-                ("justify_content:チャンネル", JUSTIFY_CONTENT_COLOR, 3.),
-                // (format!("{align_items:?}"), ACTIVE_CHANNEL_COLOR, 0.),
-                // (format!("{justify_content:?}"), JUSTIFY_CONTENT_COLOR, 3.),
-            ];
-            for (text, color, top_margin) in labels {
-                // We nest the text within a parent node because margins and padding can't be directly applied to text nodes currently.
-                spawn_nested_text_bundle(
-                    builder,
-                    font.clone(),
-                    color,
-                    UiRect::top(Val::Px(top_margin)),
-                    text,
-                );
-            }
-        });
-}
-
-fn spawn_nested_text_bundle(
-    builder: &mut ChildBuilder,
-    font: Handle<Font>,
-    background_color: Color,
-    margin: UiRect,
-    text: &str,
-) {
-    builder
-        .spawn(NodeBundle {
-            style: Style {
-                margin,
-                padding: UiRect {
-                    top: Val::Px(1.),
-                    left: Val::Px(5.),
-                    right: Val::Px(5.),
-                    bottom: Val::Px(1.),
-                },
-                ..Default::default()
-            },
-            background_color: BackgroundColor(background_color),
-            ..Default::default()
-        })
-        .with_children(|builder| {
-            builder.spawn(TextBundle::from_section(
-                text,
-                TextStyle {
-                    font,
-                    font_size: 24.0,
-                    color: Color::BLACK,
-                },
-            ));
         });
 }
 
@@ -350,7 +244,84 @@ fn spawn_timeline_text_bundle(
     builder
         .spawn(NodeBundle {
             style: Style {
-                min_size: Size::new(Val::Percent(90.), Val::Percent(30.)),
+                flex_direction: FlexDirection::Column,
+                size: Size::new(Val::Percent(90.), Val::Percent(30.)),
+                margin,
+                padding: UiRect {
+                    top: Val::Px(1.),
+                    left: Val::Px(5.),
+                    right: Val::Px(5.),
+                    bottom: Val::Px(1.),
+                },
+                ..Default::default()
+            },
+            background_color: BackgroundColor(background_color),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            builder
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Row,
+                        flex_wrap: FlexWrap::Wrap,
+                        justify_content: JustifyContent::Center,
+                        size: Size::new(Val::Percent(90.), Val::Percent(30.)),
+                        margin,
+                        padding: UiRect {
+                            top: Val::Px(1.),
+                            left: Val::Px(5.),
+                            right: Val::Px(5.),
+                            bottom: Val::Px(1.),
+                        },
+                        ..Default::default()
+                    },
+                    background_color: BackgroundColor(background_color),
+                    ..Default::default()
+                })
+                .with_children(|builder| {
+                    builder.spawn((
+                        TextBundle::from_section(
+                            "開始時刻",
+                            TextStyle {
+                                font: font.clone(),
+                                font_size: 24.0,
+                                color: Color::BLACK,
+                            },
+                        )
+                        .with_style(Style {
+                            size: Size::new(Val::Percent(25.0), Val::Px(80.0)),
+                            flex_wrap: FlexWrap::Wrap,
+                            ..default()
+                        }),
+                        timeline.clone(),
+                        Description::StartTime,
+                    ));
+                    builder.spawn((
+                        TextBundle::from_section(
+                            "タイトル",
+                            TextStyle {
+                                font: font.clone(),
+                                font_size: 24.0,
+                                color: Color::BLACK,
+                            },
+                        )
+                        .with_style(Style {
+                            size: Size::new(Val::Percent(70.0), Val::Px(80.0)),
+                            flex_wrap: FlexWrap::Wrap,
+                            ..default()
+                        }),
+                        timeline.clone(),
+                        Description::Title,
+                    ));
+                });
+        });
+    builder
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                flex_wrap: FlexWrap::Wrap,
+                justify_content: JustifyContent::Center,
+                size: Size::new(Val::Percent(90.), Val::Percent(30.)),
                 margin,
                 padding: UiRect {
                     top: Val::Px(1.),
@@ -366,7 +337,7 @@ fn spawn_timeline_text_bundle(
         .with_children(|builder| {
             builder.spawn((
                 TextBundle::from_section(
-                    "開始時刻",
+                    "内容\n内容",
                     TextStyle {
                         font: font.clone(),
                         font_size: 24.0,
@@ -374,30 +345,6 @@ fn spawn_timeline_text_bundle(
                     },
                 ),
                 timeline.clone(),
-                Description::StartTime,
-            ));
-            builder.spawn((
-                TextBundle::from_section(
-                    "タイトル",
-                    TextStyle {
-                        font: font.clone(),
-                        font_size: 24.0,
-                        color: Color::BLACK,
-                    },
-                ),
-                timeline.clone(),
-                Description::Title,
-            ));
-            builder.spawn((
-                TextBundle::from_section(
-                    "a long text as description",
-                    TextStyle {
-                        font: font.clone(),
-                        font_size: 24.0,
-                        color: Color::BLACK,
-                    },
-                ),
-                timeline,
                 Description::Subtitle,
             ));
         });
@@ -552,7 +499,7 @@ fn handle_responses(
             // }
             match description {
                 Description::StartTime => {
-                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["start_time"]);
+                    text.sections[0].value =DateTime::parse_from_rfc3339(data[format!("{timeline:?}")]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string();
                 }
                 Description::Title => {
                     text.sections[0].value = unquote(&data[format!("{timeline:?}")]["title"]);
