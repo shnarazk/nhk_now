@@ -21,6 +21,7 @@ enum CurrentService {
     R2,
     R3,
 }
+
 impl std::fmt::Debug for CurrentService {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -55,12 +56,38 @@ impl std::fmt::Display for CurrentService {
     }
 }
 
-#[allow(dead_code)]
-const TIMELINE: [(&str, &str); 3] = [
-    ("following", "bg-slate-100 text-gray-600"),
-    ("present", "bg-slate-200 text-black"),
-    ("previous", "bg-slate-400 text-gray-800"),
-];
+#[derive(Component, Clone, Eq, PartialEq, PartialOrd, Ord)]
+enum Timeline {
+    Following,
+    Present,
+    Previous,
+}
+
+impl std::fmt::Debug for Timeline {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Timeline::Following => "following",
+                Timeline::Present => "present",
+                Timeline::Previous => "previous",
+            }
+        )
+    }
+}
+
+impl Timeline {
+    #[allow(dead_code)]
+    fn style(&self) -> &'static str {
+        match self {
+            Timeline::Following => "bg-slate-100 text-gray-600",
+            Timeline::Present => "bg-slate-200 text-black",
+            Timeline::Previous => "bg-slate-400 text-gray-800",
+        }
+    }
+}
+
 const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.066, 0.349);
 const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.102, 0.522, 1.);
 const MARGIN: Val = Val::Px(2.);
@@ -171,13 +198,35 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             builder
                 .spawn(NodeBundle {
                     style: Style {
-                        min_size: Size::new(Val::Px(850.), Val::Px(1020.)),
+                        min_size: Size::new(Val::Percent(96.), Val::Percent(30.)),
                         flex_direction: FlexDirection::Column,
+                        // flex_direction: FlexDirection::Row,
                         ..Default::default()
                     },
                     ..Default::default()
                 })
-                .with_children(|_builder| {
+                .with_children(|builder| {
+                    spawn_timeline_text_bundle(
+                        builder,
+                        font.clone(),
+                        JUSTIFY_CONTENT_COLOR,
+                        UiRect::right(MARGIN),
+                        Timeline::Following,
+                    );
+                    spawn_timeline_text_bundle(
+                        builder,
+                        font.clone(),
+                        JUSTIFY_CONTENT_COLOR,
+                        UiRect::right(MARGIN),
+                        Timeline::Present,
+                    );
+                    spawn_timeline_text_bundle(
+                        builder,
+                        font.clone(),
+                        JUSTIFY_CONTENT_COLOR,
+                        UiRect::right(MARGIN),
+                        Timeline::Previous,
+                    );
                     // spawn one child node for each combination of `AlignItems` and `JustifyContent`
                     // let justifications = [
                     //     JustifyContent::FlexStart,
@@ -284,6 +333,44 @@ fn spawn_nested_text_bundle(
                     font_size: 24.0,
                     color: Color::BLACK,
                 },
+            ));
+        });
+}
+
+fn spawn_timeline_text_bundle(
+    builder: &mut ChildBuilder,
+    font: Handle<Font>,
+    background_color: Color,
+    margin: UiRect,
+    timeline: Timeline,
+) {
+    builder
+        .spawn(NodeBundle {
+            style: Style {
+                min_size: Size::new(Val::Percent(90.), Val::Percent(30.)),
+                margin,
+                padding: UiRect {
+                    top: Val::Px(1.),
+                    left: Val::Px(5.),
+                    right: Val::Px(5.),
+                    bottom: Val::Px(1.),
+                },
+                ..Default::default()
+            },
+            background_color: BackgroundColor(background_color),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            builder.spawn((
+                TextBundle::from_section(
+                    "a long text as description",
+                    TextStyle {
+                        font,
+                        font_size: 24.0,
+                        color: Color::BLACK,
+                    },
+                ),
+                timeline,
             ));
         });
 }
