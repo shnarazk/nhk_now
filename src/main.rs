@@ -1,9 +1,5 @@
 use {
-    bevy::{
-        prelude::*,
-        // tasks::{AsyncComputeTaskPool, Task},
-        winit::WinitSettings,
-    },
+    bevy::{prelude::*, winit::WinitSettings},
     // chrono::DateTime,
     clap::Parser,
     nhk_now::reqwest_plugin::*,
@@ -12,8 +8,8 @@ use {
     serde_json::Value,
 };
 
-#[derive(Component, Clone, Eq, PartialEq, PartialOrd, Ord)]
-enum CurrentService {
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
+enum Service {
     None,
     G1,
     E1,
@@ -22,39 +18,48 @@ enum CurrentService {
     R3,
 }
 
-impl std::fmt::Debug for CurrentService {
+impl std::fmt::Debug for Service {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                CurrentService::None => "",
-                CurrentService::G1 => "g1",
-                CurrentService::E1 => "e1",
-                CurrentService::R1 => "r1",
-                CurrentService::R2 => "r2",
-                CurrentService::R3 => "r3",
+                Service::None => "",
+                Service::G1 => "g1",
+                Service::E1 => "e1",
+                Service::R1 => "r1",
+                Service::R2 => "r2",
+                Service::R3 => "r3",
             }
         )
     }
 }
 
-impl std::fmt::Display for CurrentService {
+impl std::fmt::Display for Service {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                CurrentService::None => "",
-                CurrentService::G1 => "NHK総合1",
-                CurrentService::E1 => "NHKEテレ1",
-                CurrentService::R1 => "NHKラジオ第1",
-                CurrentService::R2 => "NHKラジオ第2",
-                CurrentService::R3 => "NHK FM",
+                Service::None => "",
+                Service::G1 => "NHK総合1",
+                Service::E1 => "NHKEテレ1",
+                Service::R1 => "NHKラジオ第1",
+                Service::R2 => "NHKラジオ第2",
+                Service::R3 => "NHK FM",
             }
         )
     }
 }
+
+#[derive(Debug, Resource)]
+struct CurrentService(Service);
+
+#[derive(Debug, Component)]
+struct TargetService(Service);
+
+#[derive(Debug, Resource)]
+struct ReqestTicket(bool);
 
 #[derive(Component, Clone, Eq, PartialEq, PartialOrd, Ord)]
 enum Timeline {
@@ -117,7 +122,8 @@ fn main() {
         .add_plugin(ReqwestPlugin)
         .insert_resource(WinitSettings::desktop_app())
         .insert_resource(app_config)
-        .insert_resource(ReqestTicket(CurrentService::None))
+        .insert_resource(CurrentService(Service::None))
+        .insert_resource(ReqestTicket(false))
         .add_systems(Startup, spawn_layout)
         .add_systems(
             Update,
@@ -163,35 +169,35 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                         font.clone(),
                         ACTIVE_CHANNEL_COLOR,
                         UiRect::right(MARGIN),
-                        CurrentService::G1,
+                        Service::G1,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
-                        CurrentService::E1,
+                        Service::E1,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
-                        CurrentService::R1,
+                        Service::R1,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
-                        CurrentService::R2,
+                        Service::R2,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
                         JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
-                        CurrentService::R3,
+                        Service::R3,
                     );
                 });
 
@@ -380,7 +386,7 @@ fn spawn_styled_button_bundle(
     font: Handle<Font>,
     background_color: Color,
     margin: UiRect,
-    service: CurrentService,
+    service: Service,
 ) {
     builder
         .spawn(NodeBundle {
@@ -413,7 +419,7 @@ fn spawn_styled_button_bundle(
                         background_color: BackgroundColor(background_color),
                         ..default()
                     },
-                    service.clone(),
+                    TargetService(service.clone()),
                 ))
                 .with_children(|parent| {
                     parent.spawn(TextBundle::from_section(
@@ -434,22 +440,24 @@ fn spawn_styled_button_bundle(
 type ButtonLike = (Changed<Interaction>, With<Button>);
 
 fn button_system(
-    mut current_service: ResMut<ReqestTicket>,
-    interaction_query: Query<(&Interaction, &CurrentService), ButtonLike>,
+    mut current_service: ResMut<CurrentService>,
+    mut triggered: ResMut<ReqestTicket>,
+    interaction_query: Query<(&Interaction, &TargetService), ButtonLike>,
 ) {
     for (interaction, target) in &interaction_query {
         if *interaction == Interaction::Clicked {
-            current_service.0 = target.clone();
+            current_service.0 = dbg!(target.0.clone());
+            triggered.0 = true;
         }
     }
 }
 
 fn button_system2(
-    current_service: Res<ReqestTicket>,
-    mut interaction_query: Query<(&CurrentService, &mut BackgroundColor), With<Button>>,
+    current_service: Res<CurrentService>,
+    mut interaction_query: Query<(&TargetService, &mut BackgroundColor), With<Button>>,
 ) {
     for (service, mut color) in &mut interaction_query {
-        *color = if &current_service.0 == service {
+        *color = if current_service.0 == service.0 {
             ACTIVE_CHANNEL_COLOR.into()
         } else {
             JUSTIFY_CONTENT_COLOR.into()
@@ -472,21 +480,27 @@ fn parse_json(json: &Value) -> Option<(Value, String)> {
     None
 }
 
-#[derive(Debug, Resource)]
-struct ReqestTicket(CurrentService);
-
-fn send_requests(config: Res<AppConfig>, mut commands: Commands, mut ch: ResMut<ReqestTicket>) {
-    if ch.0 == CurrentService::None {
+fn send_requests(
+    config: Res<AppConfig>,
+    current_service: Res<CurrentService>,
+    mut triggered: ResMut<ReqestTicket>,
+    mut commands: Commands,
+) {
+    if !triggered.0 {
+        return;
+    }
+    triggered.0 = false;
+    dbg!(&*current_service);
+    if current_service.0 == Service::None {
         return;
     }
     let Ok(base) = dbg!(format!(
         "https://api.nhk.or.jp/v2/pg/now/{}/{:?}.json?key={}",
-        400, ch.0, config.apikey,
+        400, current_service.0, config.apikey,
     )).as_str().try_into() else {
         return;
     };
     let req = reqwest::Request::new(reqwest::Method::GET, base);
-    ch.0 = CurrentService::None;
     commands.spawn(ReqwestRequest(Some(req)));
     dbg!();
 }
