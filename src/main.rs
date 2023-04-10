@@ -164,35 +164,30 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
-                        ACTIVE_CHANNEL_COLOR,
                         UiRect::right(MARGIN),
                         Service::G1,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
-                        JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         Service::E1,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
-                        JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         Service::R1,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
-                        JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         Service::R2,
                     );
                     spawn_styled_button_bundle(
                         builder,
                         font.clone(),
-                        JUSTIFY_CONTENT_COLOR,
                         UiRect::right(MARGIN),
                         Service::R3,
                     );
@@ -245,7 +240,8 @@ fn spawn_timeline_text_bundle(
         .spawn(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
-                size: Size::new(Val::Percent(90.), Val::Percent(30.)),
+                justify_content: JustifyContent::FlexStart,
+                size: Size::new(Val::Percent(100.), Val::Percent(10.)),
                 margin,
                 padding: UiRect {
                     top: Val::Px(1.),
@@ -264,8 +260,8 @@ fn spawn_timeline_text_bundle(
                     style: Style {
                         flex_direction: FlexDirection::Row,
                         flex_wrap: FlexWrap::Wrap,
-                        justify_content: JustifyContent::Center,
-                        size: Size::new(Val::Percent(90.), Val::Percent(30.)),
+                        justify_content: JustifyContent::FlexStart,
+                        size: Size::new(Val::Percent(100.), Val::Percent(10.)),
                         margin,
                         padding: UiRect {
                             top: Val::Px(1.),
@@ -289,7 +285,7 @@ fn spawn_timeline_text_bundle(
                             },
                         )
                         .with_style(Style {
-                            size: Size::new(Val::Percent(25.0), Val::Px(80.0)),
+                            // size: Size::new(Val::Percent(15.0), Val::Px(30.0)),
                             flex_wrap: FlexWrap::Wrap,
                             ..default()
                         }),
@@ -306,7 +302,7 @@ fn spawn_timeline_text_bundle(
                             },
                         )
                         .with_style(Style {
-                            size: Size::new(Val::Percent(70.0), Val::Px(80.0)),
+                            size: Size::new(Val::Percent(85.0), Val::Px(80.0)),
                             flex_wrap: FlexWrap::Wrap,
                             ..default()
                         }),
@@ -320,8 +316,9 @@ fn spawn_timeline_text_bundle(
             style: Style {
                 flex_direction: FlexDirection::Column,
                 flex_wrap: FlexWrap::Wrap,
-                justify_content: JustifyContent::Center,
-                size: Size::new(Val::Percent(90.), Val::Percent(30.)),
+                // justify_content: JustifyContent::Center,
+                justify_content: JustifyContent::FlexStart,
+                size: Size::new(Val::Percent(100.), Val::Percent(30.)),
                 margin,
                 padding: UiRect {
                     top: Val::Px(1.),
@@ -353,7 +350,6 @@ fn spawn_timeline_text_bundle(
 fn spawn_styled_button_bundle(
     builder: &mut ChildBuilder,
     font: Handle<Font>,
-    background_color: Color,
     margin: UiRect,
     service: Service,
 ) {
@@ -385,7 +381,7 @@ fn spawn_styled_button_bundle(
                             align_items: AlignItems::Center,
                             ..default()
                         },
-                        background_color: BackgroundColor(background_color),
+                        background_color: BackgroundColor(JUSTIFY_CONTENT_COLOR),
                         ..default()
                     },
                     TargetService(service.clone()),
@@ -471,7 +467,7 @@ fn handle_responses(
 ) {
     for (e, res) in results.iter() {
         let string = res.as_str().unwrap();
-        let json: Value = serde_json::from_str(string).expect("invalid json");
+        let json: Value = serde_json::from_str(string).expect("invalid data received");
         let Some((data, _)) = parse_json(&json) else {
             return;
         };
@@ -499,13 +495,22 @@ fn handle_responses(
             // }
             match description {
                 Description::StartTime => {
-                    text.sections[0].value =DateTime::parse_from_rfc3339(data[format!("{timeline:?}")]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string();
+                    text.sections[0].value = DateTime::parse_from_rfc3339(
+                        data[format!("{timeline:?}")]["start_time"]
+                            .as_str()
+                            .unwrap(),
+                    )
+                    .unwrap()
+                    .format("%H:%M")
+                    .to_string();
                 }
                 Description::Title => {
-                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["title"]);
+                    text.sections[0].value =
+                        unquote(false, &data[format!("{timeline:?}")]["title"]);
                 }
                 Description::Subtitle => {
-                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["subtitle"]);
+                    text.sections[0].value =
+                        unquote(true, &data[format!("{timeline:?}")]["subtitle"]);
                 }
             }
         }
@@ -514,9 +519,17 @@ fn handle_responses(
     }
 }
 
-fn unquote(s: &Value) -> String {
+fn unquote(line_break: bool, s: &Value) -> String {
     if let Some(s) = s.as_str() {
-        s.trim_start_matches('"').trim_end_matches('"').to_string()
+        let mut t = String::new();
+        let at = 40;
+        for (i, c) in s.chars().enumerate() {
+            t.push(c);
+            if line_break && i % at == at - 1 {
+                t.push('\n');
+            }
+        }
+        t
     } else {
         String::new()
     }
