@@ -3,8 +3,6 @@ use {
     // chrono::DateTime,
     clap::Parser,
     nhk_now::reqwest_plugin::*,
-    // hyper::Client,
-    // hyper_tls::HttpsConnector,
     serde_json::Value,
 };
 
@@ -125,15 +123,7 @@ fn main() {
         .insert_resource(CurrentService(Service::None))
         .insert_resource(ReqestTicket(false))
         .add_systems(Startup, spawn_layout)
-        .add_systems(
-            Update,
-            (
-                button_system,
-                send_requests,
-                handle_responses,
-                button_system2,
-            ),
-        )
+        .add_systems(Update, (button_system, send_requests, handle_responses))
         .run()
 }
 
@@ -446,26 +436,12 @@ fn button_system(
 ) {
     for (interaction, target) in &interaction_query {
         if *interaction == Interaction::Clicked {
-            current_service.0 = dbg!(target.0.clone());
+            current_service.0 = target.0.clone();
             triggered.0 = true;
         }
     }
 }
 
-fn button_system2(
-    current_service: Res<CurrentService>,
-    mut interaction_query: Query<(&TargetService, &mut BackgroundColor), With<Button>>,
-) {
-    for (service, mut color) in &mut interaction_query {
-        *color = if current_service.0 == service.0 {
-            ACTIVE_CHANNEL_COLOR.into()
-        } else {
-            JUSTIFY_CONTENT_COLOR.into()
-        };
-    }
-}
-
-#[allow(dead_code)]
 fn parse_json(json: &Value) -> Option<(Value, String)> {
     if let Some(list) = json.get("nowonair_list") {
         for ch in ["g1", "e1", "r1", "r2", "r3"] {
@@ -485,32 +461,63 @@ fn send_requests(
     current_service: Res<CurrentService>,
     mut triggered: ResMut<ReqestTicket>,
     mut commands: Commands,
+    mut interaction_query: Query<&mut BackgroundColor, With<Button>>,
 ) {
     if !triggered.0 {
         return;
     }
     triggered.0 = false;
-    dbg!(&*current_service);
     if current_service.0 == Service::None {
         return;
     }
-    let Ok(base) = dbg!(format!(
+    let Ok(base) = format!(
         "https://api.nhk.or.jp/v2/pg/now/{}/{:?}.json?key={}",
-        400, current_service.0, config.apikey,
-    )).as_str().try_into() else {
+        config.area, current_service.0, config.apikey,
+    ).as_str().try_into() else {
         return;
     };
     let req = reqwest::Request::new(reqwest::Method::GET, base);
     commands.spawn(ReqwestRequest(Some(req)));
-    dbg!();
+    for mut color in &mut interaction_query {
+        *color = JUSTIFY_CONTENT_COLOR.into();
+    }
 }
 
-fn handle_responses(mut commands: Commands, results: Query<(Entity, &ReqwestBytesResult)>) {
+fn handle_responses(
+    mut commands: Commands,
+    results: Query<(Entity, &ReqwestBytesResult)>,
+    current_service: Res<CurrentService>,
+    mut buttons: Query<(&TargetService, &mut BackgroundColor), With<Button>>,
+    mut timelines: Query<(&Timeline, &mut Text)>,
+) {
     for (e, res) in results.iter() {
         let string = res.as_str().unwrap();
         let json: Value = serde_json::from_str(string).expect("invalid json");
-        info!("{json:?}");
+        let Some((data, _)) = parse_json(&json) else {
+            return;
+        };
+        info!("{data:?}");
 
+        // update button colors
+        for (service, mut color) in &mut buttons {
+            if current_service.0 == service.0 {
+                *color = ACTIVE_CHANNEL_COLOR.into();
+            }
+        }
+        // update button colors
+        for (timeline, mut text) in &mut timelines {
+            match *timeline {
+                Timeline::Following => {
+                    text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
+                }
+                Timeline::Present => {
+                    text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
+                }
+                Timeline::Previous => {
+                    text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
+                }
+            }
+        }
         // Done with this entity
         commands.entity(e).despawn_recursive();
     }
