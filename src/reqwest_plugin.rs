@@ -16,9 +16,9 @@ impl Default for ReqwestClient {
 #[derive(Component, Deref)]
 pub struct ReqwestRequest(pub Option<reqwest::Request>);
 
-impl Into<ReqwestRequest> for reqwest::Request {
-    fn into(self) -> ReqwestRequest {
-        ReqwestRequest(Some(self))
+impl From<reqwest::Request> for ReqwestRequest {
+    fn from(val: reqwest::Request) -> Self {
+        ReqwestRequest(Some(val))
     }
 }
 
