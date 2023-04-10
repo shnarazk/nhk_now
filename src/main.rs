@@ -91,8 +91,15 @@ impl Timeline {
     }
 }
 
-const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.066, 0.349);
-const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.102, 0.522, 1.);
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+enum Description {
+    StartTime,
+    Title,
+    Subtitle,
+}
+const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.866, 0.849);
+const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.802, 0.922, 1.);
+// const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.102, 0.522, 1.);
 const MARGIN: Val = Val::Px(2.);
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, Resource)]
@@ -359,14 +366,39 @@ fn spawn_timeline_text_bundle(
         .with_children(|builder| {
             builder.spawn((
                 TextBundle::from_section(
+                    "開始時刻",
+                    TextStyle {
+                        font: font.clone(),
+                        font_size: 24.0,
+                        color: Color::BLACK,
+                    },
+                ),
+                timeline.clone(),
+                Description::StartTime,
+            ));
+            builder.spawn((
+                TextBundle::from_section(
+                    "タイトル",
+                    TextStyle {
+                        font: font.clone(),
+                        font_size: 24.0,
+                        color: Color::BLACK,
+                    },
+                ),
+                timeline.clone(),
+                Description::Title,
+            ));
+            builder.spawn((
+                TextBundle::from_section(
                     "a long text as description",
                     TextStyle {
-                        font,
+                        font: font.clone(),
                         font_size: 24.0,
                         color: Color::BLACK,
                     },
                 ),
                 timeline,
+                Description::Subtitle,
             ));
         });
 }
@@ -488,7 +520,7 @@ fn handle_responses(
     results: Query<(Entity, &ReqwestBytesResult)>,
     current_service: Res<CurrentService>,
     mut buttons: Query<(&TargetService, &mut BackgroundColor), With<Button>>,
-    mut timelines: Query<(&Timeline, &mut Text)>,
+    mut timelines: Query<(&Timeline, &Description, &mut Text)>,
 ) {
     for (e, res) in results.iter() {
         let string = res.as_str().unwrap();
@@ -504,21 +536,41 @@ fn handle_responses(
                 *color = ACTIVE_CHANNEL_COLOR.into();
             }
         }
-        // update button colors
-        for (timeline, mut text) in &mut timelines {
-            match *timeline {
-                Timeline::Following => {
-                    text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
+        // update button colors and contents table
+        for (timeline, description, mut text) in &mut timelines {
+            // match *timeline {
+            //     Timeline::Following => {
+            //         text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
+            //     }
+            //     Timeline::Present => {
+            //         dbg!(&description);
+            //         text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
+            //     }
+            //     Timeline::Previous => {
+            //         text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
+            //     }
+            // }
+            match description {
+                Description::StartTime => {
+                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["start_time"]);
                 }
-                Timeline::Present => {
-                    text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
+                Description::Title => {
+                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["title"]);
                 }
-                Timeline::Previous => {
-                    text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
+                Description::Subtitle => {
+                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["subtitle"]);
                 }
             }
         }
         // Done with this entity
         commands.entity(e).despawn_recursive();
+    }
+}
+
+fn unquote(s: &Value) -> String {
+    if let Some(s) = s.as_str() {
+        s.trim_start_matches('"').trim_end_matches('"').to_string()
+    } else {
+        String::new()
     }
 }
