@@ -79,14 +79,30 @@ impl std::fmt::Debug for Timeline {
         )
     }
 }
-
 impl Timeline {
-    #[allow(dead_code)]
-    fn style(&self) -> &'static str {
+    fn style(&self) -> BackgroundColor {
         match self {
-            Timeline::Following => "bg-slate-100 text-gray-600",
-            Timeline::Present => "bg-slate-200 text-black",
-            Timeline::Previous => "bg-slate-400 text-gray-800",
+            Timeline::Following => BackgroundColor(Color::Hsla {
+                hue: 0.1,
+                saturation: 0.2,
+                lightness: 1.0,
+                alpha: 1.0,
+            }),
+            // Timeline::Following => "bg-slate-100 text-gray-600",
+            Timeline::Present => BackgroundColor(Color::Hsla {
+                hue: 0.3,
+                saturation: 0.3,
+                lightness: 0.9,
+                alpha: 1.0,
+            }),
+            // Timeline::Present => "bg-slate-200 text-black",
+            Timeline::Previous => BackgroundColor(Color::Hsla {
+                hue: 0.4,
+                saturation: 0.7,
+                lightness: 0.6,
+                alpha: 1.0,
+            }),
+            // Timeline::Previous => "bg-slate-400 text-gray-800",
         }
     }
 }
@@ -118,7 +134,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                resolution: [700., 410.].into(),
+                resolution: [700., 350.].into(),
                 title: "NHK now".to_string(),
                 ..Default::default()
             }),
@@ -196,7 +212,7 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             builder
                 .spawn(NodeBundle {
                     style: Style {
-                        min_size: Size::new(Val::Percent(96.), Val::Percent(30.)),
+                        min_size: Size::new(Val::Percent(96.), Val::Percent(100.)),
                         flex_direction: FlexDirection::Column,
                         // flex_direction: FlexDirection::Row,
                         ..Default::default()
@@ -204,54 +220,30 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ..Default::default()
                 })
                 .with_children(|builder| {
-                    spawn_timeline_text_bundle(
-                        builder,
-                        font.clone(),
-                        JUSTIFY_CONTENT_COLOR,
-                        UiRect::right(MARGIN),
-                        Timeline::Following,
-                    );
-                    spawn_timeline_text_bundle(
-                        builder,
-                        font.clone(),
-                        JUSTIFY_CONTENT_COLOR,
-                        UiRect::right(MARGIN),
-                        Timeline::Present,
-                    );
-                    spawn_timeline_text_bundle(
-                        builder,
-                        font.clone(),
-                        JUSTIFY_CONTENT_COLOR,
-                        UiRect::right(MARGIN),
-                        Timeline::Previous,
-                    );
+                    spawn_timeline_text_bundle(builder, font.clone(), Timeline::Following);
+                    spawn_timeline_text_bundle(builder, font.clone(), Timeline::Present);
+                    spawn_timeline_text_bundle(builder, font.clone(), Timeline::Previous);
                 });
         });
 }
 
-fn spawn_timeline_text_bundle(
-    builder: &mut ChildBuilder,
-    font: Handle<Font>,
-    background_color: Color,
-    margin: UiRect,
-    timeline: Timeline,
-) {
+fn spawn_timeline_text_bundle(builder: &mut ChildBuilder, font: Handle<Font>, timeline: Timeline) {
     builder
         .spawn(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::FlexStart,
-                size: Size::new(Val::Percent(100.), Val::Percent(10.)),
-                margin,
+                size: Size::new(Val::Percent(100.), Val::Percent(14.)),
+                // margin,
                 padding: UiRect {
-                    top: Val::Px(1.),
+                    top: Val::Px(3.),
                     left: Val::Px(5.),
                     right: Val::Px(5.),
-                    bottom: Val::Px(1.),
+                    bottom: Val::Px(2.),
                 },
                 ..Default::default()
             },
-            background_color: BackgroundColor(background_color),
+            background_color: timeline.style(), // BackgroundColor(background_color),
             ..Default::default()
         })
         .with_children(|builder| {
@@ -262,7 +254,7 @@ fn spawn_timeline_text_bundle(
                         flex_wrap: FlexWrap::Wrap,
                         justify_content: JustifyContent::FlexStart,
                         size: Size::new(Val::Percent(100.), Val::Percent(10.)),
-                        margin,
+                        //  margin,
                         padding: UiRect {
                             top: Val::Px(1.),
                             left: Val::Px(5.),
@@ -271,7 +263,7 @@ fn spawn_timeline_text_bundle(
                         },
                         ..Default::default()
                     },
-                    background_color: BackgroundColor(background_color),
+                    background_color: timeline.style(), // BackgroundColor(background_color),
                     ..Default::default()
                 })
                 .with_children(|builder| {
@@ -318,8 +310,8 @@ fn spawn_timeline_text_bundle(
                 flex_wrap: FlexWrap::Wrap,
                 // justify_content: JustifyContent::Center,
                 justify_content: JustifyContent::FlexStart,
-                size: Size::new(Val::Percent(100.), Val::Percent(30.)),
-                margin,
+                size: Size::new(Val::Percent(100.), Val::Percent(15.)),
+                // margin,
                 padding: UiRect {
                     top: Val::Px(1.),
                     left: Val::Px(35.),
@@ -328,7 +320,7 @@ fn spawn_timeline_text_bundle(
                 },
                 ..Default::default()
             },
-            background_color: BackgroundColor(background_color),
+            background_color: timeline.style(),
             ..Default::default()
         })
         .with_children(|builder| {
@@ -521,7 +513,7 @@ fn handle_responses(
 fn unquote(line_break: bool, s: &Value) -> String {
     if let Some(s) = s.as_str() {
         let mut t = String::new();
-        let at = 40;
+        let at = 50;
         for (i, c) in s.chars().enumerate() {
             t.push(c);
             if line_break && i % at == at - 1 {
