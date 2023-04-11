@@ -285,7 +285,7 @@ fn spawn_timeline_text_bundle(
                             },
                         )
                         .with_style(Style {
-                            // size: Size::new(Val::Percent(15.0), Val::Px(30.0)),
+                            size: Size::new(Val::Percent(15.0), Val::Px(80.0)),
                             flex_wrap: FlexWrap::Wrap,
                             ..default()
                         }),
@@ -297,7 +297,7 @@ fn spawn_timeline_text_bundle(
                             "タイトル",
                             TextStyle {
                                 font: font.clone(),
-                                font_size: 24.0,
+                                font_size: 26.0,
                                 color: Color::BLACK,
                             },
                         )
@@ -322,7 +322,7 @@ fn spawn_timeline_text_bundle(
                 margin,
                 padding: UiRect {
                     top: Val::Px(1.),
-                    left: Val::Px(5.),
+                    left: Val::Px(35.),
                     right: Val::Px(5.),
                     bottom: Val::Px(1.),
                 },
@@ -337,7 +337,7 @@ fn spawn_timeline_text_bundle(
                     "内容\n内容",
                     TextStyle {
                         font: font.clone(),
-                        font_size: 24.0,
+                        font_size: 22.0,
                         color: Color::BLACK,
                     },
                 ),
