@@ -82,27 +82,9 @@ impl std::fmt::Debug for Timeline {
 impl Timeline {
     fn style(&self) -> BackgroundColor {
         match self {
-            Timeline::Following => BackgroundColor(Color::Hsla {
-                hue: 0.1,
-                saturation: 0.2,
-                lightness: 1.0,
-                alpha: 1.0,
-            }),
-            // Timeline::Following => "bg-slate-100 text-gray-600",
-            Timeline::Present => BackgroundColor(Color::Hsla {
-                hue: 0.3,
-                saturation: 0.3,
-                lightness: 0.9,
-                alpha: 1.0,
-            }),
-            // Timeline::Present => "bg-slate-200 text-black",
-            Timeline::Previous => BackgroundColor(Color::Hsla {
-                hue: 0.4,
-                saturation: 0.7,
-                lightness: 0.6,
-                alpha: 1.0,
-            }),
-            // Timeline::Previous => "bg-slate-400 text-gray-800",
+            Timeline::Following => BackgroundColor(Color::hsl(0.0, 0.0, 1.0)),
+            Timeline::Present => BackgroundColor(Color::hsl(0.0, 0.0, 0.94)),
+            Timeline::Previous => BackgroundColor(Color::hsl(0.0, 0.0, 0.6)),
         }
     }
 }
@@ -113,9 +95,8 @@ enum Description {
     Title,
     Subtitle,
 }
-const ACTIVE_CHANNEL_COLOR: Color = Color::rgb(1., 0.866, 0.849);
-const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.802, 0.922, 1.);
-// const JUSTIFY_CONTENT_COLOR: Color = Color::rgb(0.102, 0.522, 1.);
+const ACTIVE_CHANNEL_COLOR: Color = Color::hsl(0.0, 0.0, 1.0);
+const JUSTIFY_CONTENT_COLOR: Color = Color::hsl(0.0, 0.0, 0.6);
 const MARGIN: Val = Val::Px(2.);
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, Resource)]
@@ -126,7 +107,7 @@ struct AppConfig {
     area: u32,
     /// API key
     #[clap(short = 'k', long = "key", env)]
-    apikey: String,
+    nhk_api_key: String,
 }
 
 fn main() {
@@ -391,9 +372,6 @@ fn spawn_styled_button_bundle(
         });
 }
 
-// const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
-// const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
-// const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
 type ButtonLike = (Changed<Interaction>, With<Button>);
 
 fn button_system(
@@ -439,7 +417,7 @@ fn send_requests(
     }
     let Ok(base) = format!(
         "https://api.nhk.or.jp/v2/pg/now/{}/{:?}.json?key={}",
-        config.area, current_service.0, config.apikey,
+        config.area, current_service.0, config.nhk_api_key,
     ).as_str().try_into() else {
         return;
     };
@@ -470,20 +448,8 @@ fn handle_responses(
                 *color = ACTIVE_CHANNEL_COLOR.into();
             }
         }
-        // update button colors and contents table
+        // update contents table
         for (timeline, description, mut text) in &mut timelines {
-            // match *timeline {
-            //     Timeline::Following => {
-            //         text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
-            //     }
-            //     Timeline::Present => {
-            //         dbg!(&description);
-            //         text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
-            //     }
-            //     Timeline::Previous => {
-            //         text.sections[0].value = data[format!("{timeline:?}")]["title"].to_string();
-            //     }
-            // }
             match description {
                 Description::StartTime => {
                     text.sections[0].value = DateTime::parse_from_rfc3339(
