@@ -118,7 +118,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                resolution: [700., 440.].into(),
+                resolution: [700., 410.].into(),
                 title: "NHK now".to_string(),
                 ..Default::default()
             }),
@@ -280,7 +280,7 @@ fn spawn_timeline_text_bundle(
                             "開始時刻",
                             TextStyle {
                                 font: font.clone(),
-                                font_size: 24.0,
+                                font_size: 20.0,
                                 color: Color::BLACK,
                             },
                         )
@@ -297,7 +297,7 @@ fn spawn_timeline_text_bundle(
                             "タイトル",
                             TextStyle {
                                 font: font.clone(),
-                                font_size: 26.0,
+                                font_size: 20.0,
                                 color: Color::BLACK,
                             },
                         )
@@ -334,10 +334,10 @@ fn spawn_timeline_text_bundle(
         .with_children(|builder| {
             builder.spawn((
                 TextBundle::from_section(
-                    "内容\n内容",
+                    "番組内容\n表示パネル",
                     TextStyle {
                         font: font.clone(),
-                        font_size: 22.0,
+                        font_size: 18.0,
                         color: Color::BLACK,
                     },
                 ),
@@ -391,7 +391,7 @@ fn spawn_styled_button_bundle(
                         format!("{}", service),
                         TextStyle {
                             font,
-                            font_size: 24.0,
+                            font_size: 20.0,
                             color: Color::BLACK,
                         },
                     ));
@@ -471,7 +471,6 @@ fn handle_responses(
         let Some((data, _)) = parse_json(&json) else {
             return;
         };
-        info!("{data:?}");
 
         // update button colors
         for (service, mut color) in &mut buttons {
