@@ -1,240 +1,479 @@
 use {
-    chrono::prelude::*, clap::Parser, dioxus::prelude::*, dioxus_desktop::Config, hyper::Client,
-    hyper_tls::HttpsConnector, serde_json::Value,
+    bevy::{prelude::*, winit::WinitSettings},
+    chrono::DateTime,
+    clap::Parser,
+    nhk_now::reqwest_plugin::*,
+    serde_json::Value,
 };
 
-#[derive(Clone, Debug, Default, Parser)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
+enum Service {
+    None,
+    G1,
+    E1,
+    R1,
+    R2,
+    R3,
+}
+
+impl std::fmt::Debug for Service {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Service::None => "",
+                Service::G1 => "g1",
+                Service::E1 => "e1",
+                Service::R1 => "r1",
+                Service::R2 => "r2",
+                Service::R3 => "r3",
+            }
+        )
+    }
+}
+
+impl std::fmt::Display for Service {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Service::None => "",
+                Service::G1 => "NHK総合1",
+                Service::E1 => "NHKEテレ1",
+                Service::R1 => "NHKラジオ第1",
+                Service::R2 => "NHKラジオ第2",
+                Service::R3 => "NHK FM",
+            }
+        )
+    }
+}
+
+#[derive(Debug, Resource)]
+struct CurrentService(Service);
+
+#[derive(Debug, Component)]
+struct TargetService(Service);
+
+#[derive(Debug, Resource)]
+struct ReqestTicket(bool);
+
+#[derive(Component, Clone, Eq, PartialEq, PartialOrd, Ord)]
+enum Timeline {
+    Following,
+    Present,
+    Previous,
+}
+
+impl std::fmt::Debug for Timeline {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Timeline::Following => "following",
+                Timeline::Present => "present",
+                Timeline::Previous => "previous",
+            }
+        )
+    }
+}
+impl Timeline {
+    fn style(&self) -> BackgroundColor {
+        match self {
+            Timeline::Following => BackgroundColor(Color::hsl(0.0, 0.0, 1.0)),
+            Timeline::Present => BackgroundColor(Color::hsl(0.0, 0.0, 0.94)),
+            Timeline::Previous => BackgroundColor(Color::hsl(0.0, 0.0, 0.6)),
+        }
+    }
+}
+
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+enum Description {
+    StartTime,
+    Title,
+    Subtitle,
+}
+const ACTIVE_CHANNEL_COLOR: Color = Color::hsl(0.0, 0.0, 1.0);
+const JUSTIFY_CONTENT_COLOR: Color = Color::hsl(0.0, 0.0, 0.6);
+const MARGIN: Val = Val::Px(2.);
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, Resource)]
 #[clap(author, version, about)]
 struct AppConfig {
     /// area code
-    #[clap(short = 'a')]
-    area: Option<String>,
-    /// service (channel)
-    #[clap(short = 's')]
-    service: Option<String>,
-    /// date
-    #[clap(short = 'd')]
-    date: Option<String>,
+    #[clap(short = 'a', default_value = "400")]
+    area: u32,
     /// API key
     #[clap(short = 'k', long = "key", env)]
-    apikey: String,
-    /// Just download the csv w/o GUI
-    #[clap(long = "headless")]
-    headless: bool,
+    nhk_api_key: String,
 }
 
-#[tokio::main]
-async fn main() {
-    // println!("Hello, world!");
-    dioxus_desktop::launch_cfg(
-        app,
-        Config::new()
-            .with_custom_head("<link href=\"https://cdn.jsdelivr.net/npm/daisyui@2.51.5/dist/full.css\" rel=\"stylesheet\" type=\"text/css\" />\n<script src=\"https://cdn.tailwindcss.com\"></script>".to_string())
-        .with_window(
-            dioxus_desktop::tao::window::WindowBuilder::new()
-                .with_title("NHK now")
-                .with_resizable(true)
-                .with_inner_size(dioxus_desktop::wry::application::dpi::LogicalSize::new(640.0,370.0))
-            ),
-    );
-}
-
-#[allow(unused_variables)]
-fn app(cx: Scope) -> Element {
+fn main() {
     let app_config = AppConfig::parse();
-    let mut count = use_state(cx, || 0);
-    let s = match &app_config.service {
-        Some(ref s) => s.clone(),
-        _ => "g1".to_string(),
-    };
-    let service = use_state(cx, || s);
-    let json = use_future(cx, (count, service), |(count, service)| async move {
-        load_json(&app_config, &service).await
-    });
-    // dbg!(json);
-    macro_rules! TAB_CLASS {
-        ($target: expr) => {
-            if $target == service.as_str() {
-                "tab tab-lifted text-lg tab-active"
-            } else {
-                "tab tab-lifted text-lg"
-            }
-        };
-    }
-    match json.value() {
-        Some(Ok(json)) if !json["nowonair_list"][service.as_str()].is_null() => {
-            // dbg!(&json["nowonair_list"][service.as_str()]["following"]["start_time"]);
-            cx.render(rsx!{
-                div {
-                    class: "tabs mt-2 ml-2",
-                    button {
-                        class: TAB_CLASS!("g1"),
-                        onclick: move |_| service.set("g1".to_string()),
-                        "NHK総合1"
+    App::new()
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: [700., 350.].into(),
+                title: "NHK now".to_string(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }))
+        .add_plugin(ReqwestPlugin)
+        .insert_resource(WinitSettings::desktop_app())
+        .insert_resource(app_config)
+        .insert_resource(CurrentService(Service::None))
+        .insert_resource(ReqestTicket(false))
+        .add_systems(Startup, spawn_layout)
+        .add_systems(Update, (button_system, send_requests, handle_responses))
+        .run()
+}
+
+fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font = asset_server.load("fonts/NotoSansCJKjp-Regular.otf");
+    commands.spawn(Camera2dBundle::default());
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                // fill the entire window
+                size: Size::all(Val::Percent(100.)),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: BackgroundColor(Color::BLACK),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            // spawn the key
+            builder
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Row,
+                        margin: UiRect::top(MARGIN),
+                        ..Default::default()
                     },
-                    button {
-                        class: TAB_CLASS!("e1"),
-                        onclick: move |_| service.set("e1".to_string()),
-                        "NHKEテレ1"
+                    ..Default::default()
+                })
+                .with_children(|builder| {
+                    spawn_styled_button_bundle(
+                        builder,
+                        font.clone(),
+                        UiRect::right(MARGIN),
+                        Service::G1,
+                    );
+                    spawn_styled_button_bundle(
+                        builder,
+                        font.clone(),
+                        UiRect::right(MARGIN),
+                        Service::E1,
+                    );
+                    spawn_styled_button_bundle(
+                        builder,
+                        font.clone(),
+                        UiRect::right(MARGIN),
+                        Service::R1,
+                    );
+                    spawn_styled_button_bundle(
+                        builder,
+                        font.clone(),
+                        UiRect::right(MARGIN),
+                        Service::R2,
+                    );
+                    spawn_styled_button_bundle(
+                        builder,
+                        font.clone(),
+                        UiRect::right(MARGIN),
+                        Service::R3,
+                    );
+                });
+
+            builder
+                .spawn(NodeBundle {
+                    style: Style {
+                        min_size: Size::new(Val::Percent(96.), Val::Percent(100.)),
+                        flex_direction: FlexDirection::Column,
+                        // flex_direction: FlexDirection::Row,
+                        ..Default::default()
                     },
-                    button {
-                        class: TAB_CLASS!("r1"),
-                        onclick: move |_| service.set("r1".to_string()),
-                        "NHKラジオ第1"
+                    ..Default::default()
+                })
+                .with_children(|builder| {
+                    spawn_timeline_text_bundle(builder, font.clone(), Timeline::Following);
+                    spawn_timeline_text_bundle(builder, font.clone(), Timeline::Present);
+                    spawn_timeline_text_bundle(builder, font.clone(), Timeline::Previous);
+                });
+        });
+}
+
+fn spawn_timeline_text_bundle(builder: &mut ChildBuilder, font: Handle<Font>, timeline: Timeline) {
+    builder
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::FlexStart,
+                size: Size::new(Val::Percent(100.), Val::Percent(14.)),
+                // margin,
+                padding: UiRect {
+                    top: Val::Px(3.),
+                    left: Val::Px(5.),
+                    right: Val::Px(5.),
+                    bottom: Val::Px(2.),
+                },
+                ..Default::default()
+            },
+            background_color: timeline.style(), // BackgroundColor(background_color),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            builder
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Row,
+                        flex_wrap: FlexWrap::Wrap,
+                        justify_content: JustifyContent::FlexStart,
+                        size: Size::new(Val::Percent(100.), Val::Percent(10.)),
+                        //  margin,
+                        padding: UiRect {
+                            top: Val::Px(1.),
+                            left: Val::Px(5.),
+                            right: Val::Px(5.),
+                            bottom: Val::Px(1.),
+                        },
+                        ..Default::default()
                     },
-                    button {
-                        class: TAB_CLASS!("r2"),
-                        onclick: move |_| service.set("r2".to_string()),
-                        "NHKラジオ第2"
+                    background_color: timeline.style(), // BackgroundColor(background_color),
+                    ..Default::default()
+                })
+                .with_children(|builder| {
+                    builder.spawn((
+                        TextBundle::from_section(
+                            "開始時刻",
+                            TextStyle {
+                                font: font.clone(),
+                                font_size: 20.0,
+                                color: Color::BLACK,
+                            },
+                        )
+                        .with_style(Style {
+                            size: Size::new(Val::Percent(15.0), Val::Px(80.0)),
+                            flex_wrap: FlexWrap::Wrap,
+                            ..default()
+                        }),
+                        timeline.clone(),
+                        Description::StartTime,
+                    ));
+                    builder.spawn((
+                        TextBundle::from_section(
+                            "タイトル",
+                            TextStyle {
+                                font: font.clone(),
+                                font_size: 20.0,
+                                color: Color::BLACK,
+                            },
+                        )
+                        .with_style(Style {
+                            size: Size::new(Val::Percent(85.0), Val::Px(80.0)),
+                            flex_wrap: FlexWrap::Wrap,
+                            ..default()
+                        }),
+                        timeline.clone(),
+                        Description::Title,
+                    ));
+                });
+        });
+    builder
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                flex_wrap: FlexWrap::Wrap,
+                // justify_content: JustifyContent::Center,
+                justify_content: JustifyContent::FlexStart,
+                size: Size::new(Val::Percent(100.), Val::Percent(15.)),
+                // margin,
+                padding: UiRect {
+                    top: Val::Px(1.),
+                    left: Val::Px(35.),
+                    right: Val::Px(5.),
+                    bottom: Val::Px(1.),
+                },
+                ..Default::default()
+            },
+            background_color: timeline.style(),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            builder.spawn((
+                TextBundle::from_section(
+                    "番組内容\n表示パネル",
+                    TextStyle {
+                        font: font.clone(),
+                        font_size: 18.0,
+                        color: Color::BLACK,
                     },
-                    button {
-                        class: TAB_CLASS!("r3"),
-                        onclick: move |_| service.set("r3".to_string()),
-                        "NHKFM"
+                ),
+                timeline.clone(),
+                Description::Subtitle,
+            ));
+        });
+}
+
+fn spawn_styled_button_bundle(
+    builder: &mut ChildBuilder,
+    font: Handle<Font>,
+    margin: UiRect,
+    service: Service,
+) {
+    builder
+        .spawn(NodeBundle {
+            style: Style {
+                margin,
+                flex_direction: FlexDirection::Row,
+                padding: UiRect {
+                    top: Val::Px(1.),
+                    left: Val::Px(5.),
+                    right: Val::Px(5.),
+                    bottom: Val::Px(1.),
+                },
+                ..Default::default()
+            },
+            // background_color: BackgroundColor(background_color),
+            ..Default::default()
+        })
+        .with_children(|builder| {
+            builder
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            size: Size::new(Val::Px(120.0), Val::Px(30.0)),
+                            // horizontally center child text
+                            justify_content: JustifyContent::Center,
+                            // vertically center child text
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        background_color: BackgroundColor(JUSTIFY_CONTENT_COLOR),
+                        ..default()
                     },
-                }
-                div {
-                    class: "grid bg-base-300 p-0 mx-2 drop-shadow-xl",
-                    table {
-                        class:"table table-compact p-0 mt-0 w-full text-white bg-red-600 border-red-600 border-y-2 border-solid border-0 border-indigo-600",
-                        tr {
-                            class:"",
-                            th {
-                                "開始時間"
-                            }
-                            th {
-                                class:"text-right",
-                                button {
-                                    class: "btn btn-outline btn-sm text-neutral-200",
-                                    onclick: move |_| { count += 1 },
-                                    "表示情報更新"
-                                }
-                            }
-                        }
-                        tr {
-                            class:"bg-slate-100 text-gray-600",
-                            td {
-                                class:"",
-                                DateTime::parse_from_rfc3339(json["nowonair_list"][service.as_str()]["following"]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
-                            }
-                            td {
-                                class:"",
-                                json["nowonair_list"][service.as_str()]["following"]["title"].as_str(),
-                            }
-                        }
-                        tr {
-                            class:"bg-slate-100 text-gray-600",
-                            td {
-                                colspan: 2,
-                                class:"whitespace-normal pl-8 w-4/5 text-sm",
-                                json["nowonair_list"][service.as_str()]["following"]["subtitle"].as_str(),
-                            }
-                        }
-                        tr {
-                            class:"bg-slate-200 text-black",
-                            td {
-                                class:"",
-                                DateTime::parse_from_rfc3339(json["nowonair_list"][service.as_str()]["present"]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
-                            }
-                            td {
-                                class:"",
-                                json["nowonair_list"][service.as_str()]["present"]["title"].as_str(),
-                            }
-                        }
-                        tr {
-                            class:"bg-slate-200 text-black",
-                            td {
-                                colspan: 2,
-                                class:"whitespace-normal pl-8 w-4/5 text-sm",
-                                json["nowonair_list"][service.as_str()]["present"]["subtitle"].as_str(),
-                            }
-                        }
-                        tr {
-                            class:"bg-slate-400 text-gray-800",
-                            td {
-                                class:"",
-                                DateTime::parse_from_rfc3339(json["nowonair_list"][service.as_str()]["previous"]["start_time"].as_str().unwrap()).unwrap().format("%H:%M").to_string(),
-                            }
-                            td {
-                                class:"",
-                                json["nowonair_list"][service.as_str()]["previous"]["title"].as_str(),
-                            }
-                        }
-                        tr {
-                            class:"bg-slate-400 text-gray-800",
-                            td {
-                                colspan: 2,
-                                class:"whitespace-normal pl-8 w-4/5 text-sm",
-                                json["nowonair_list"][service.as_str()]["previous"]["subtitle"].as_str(),
-                            }
-                        }
-                    }
-                }
-            })
+                    TargetService(service.clone()),
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        format!("{}", service),
+                        TextStyle {
+                            font,
+                            font_size: 20.0,
+                            color: Color::BLACK,
+                        },
+                    ));
+                });
+        });
+}
+
+type ButtonLike = (Changed<Interaction>, With<Button>);
+
+fn button_system(
+    mut current_service: ResMut<CurrentService>,
+    mut triggered: ResMut<ReqestTicket>,
+    interaction_query: Query<(&Interaction, &TargetService), ButtonLike>,
+) {
+    for (interaction, target) in &interaction_query {
+        if *interaction == Interaction::Clicked {
+            current_service.0 = target.0.clone();
+            triggered.0 = true;
         }
-        e => cx.render(rsx! {
-            // match e {
-            //     Some(e) => { dbg!(e);}
-            //     _ => { dbg!(e);}
-            // }
-            div {
-                class: "tabs mt-2 ml-2",
-                button {
-                    class: TAB_CLASS!("g1"),
-                    onclick: move |_| service.set("g1".to_string()),
-                    "NHK総合1"
-                },
-                button {
-                    class: TAB_CLASS!("e1"),
-                    onclick: move |_| service.set("e1".to_string()),
-                    "NHKEテレ1"
-                },
-                button {
-                    class: TAB_CLASS!("r1"),
-                    onclick: move |_| service.set("r1".to_string()),
-                    "NHKラジオ第1"
-                },
-                button {
-                    class: TAB_CLASS!("r2"),
-                    onclick: move |_| service.set("r2".to_string()),
-                    "NHKラジオ第2"
-                },
-                button {
-                    class: TAB_CLASS!("r3"),
-                    onclick: move |_| service.set("r3".to_string()),
-                    "NHKFM"
-                },
-            }
-            div {
-                class: "grid bg-base-300 p-0 mx-2 drop-shadow-xl",
-                div {
-                    class: "grid grid-cols-1 place-items-center h-[300px]",
-                    div {
-                        class: "radial-progress animate-spin w-20 h-20",
-                        style: "--value:70;",
-                        ""
-                    }
-                }
-            }
-        }),
     }
 }
 
-async fn load_json(config: &AppConfig, service: &str) -> hyper::Result<Value> {
-    let area = config.area.as_deref().unwrap_or("400");
-    let key = &config.apikey;
-    // "https://api.nhk.or.jp/v2/pg/list/{area}/{service}/{date}.json?key={key}"
-    let client = Client::builder().build::<_, hyper::Body>(HttpsConnector::new());
-    let base = format!("https://api.nhk.or.jp/v2/pg/now/{area}/{service}.json?key={key}")
-        .parse()
-        .expect("wrong url");
-    dbg!(&base);
-    let res = client.get(base).await?;
-    dbg!();
-    let buf = hyper::body::to_bytes(res).await?;
-    let str = String::from_utf8_lossy(buf.as_ref());
-    // dbg!(&str);
-    let json: Value = serde_json::from_str(str.to_string().as_str()).expect("invalid json");
-    // dbg!(&json);
-    Ok(json)
+fn parse_json(json: &Value) -> Option<(Value, String)> {
+    if let Some(list) = json.get("nowonair_list") {
+        for ch in ["g1", "e1", "r1", "r2", "r3"] {
+            if let Some(target) = list.get(ch) {
+                return Some((target.clone(), ch.to_string()));
+            }
+        }
+    }
+    if json.get("NO").is_some() {
+        return Some((json.clone(), "".to_string()));
+    }
+    None
+}
+
+fn send_requests(
+    config: Res<AppConfig>,
+    current_service: Res<CurrentService>,
+    mut triggered: ResMut<ReqestTicket>,
+    mut commands: Commands,
+    mut interaction_query: Query<&mut BackgroundColor, With<Button>>,
+) {
+    if !triggered.0 {
+        return;
+    }
+    triggered.0 = false;
+    if current_service.0 == Service::None {
+        return;
+    }
+    let Ok(base) = format!(
+        "https://api.nhk.or.jp/v2/pg/now/{}/{:?}.json?key={}",
+        config.area, current_service.0, config.nhk_api_key,
+    ).as_str().try_into() else {
+        return;
+    };
+    let req = reqwest::Request::new(reqwest::Method::GET, base);
+    commands.spawn(ReqwestRequest(Some(req)));
+    for mut color in &mut interaction_query {
+        *color = JUSTIFY_CONTENT_COLOR.into();
+    }
+}
+
+fn handle_responses(
+    mut commands: Commands,
+    results: Query<(Entity, &ReqwestBytesResult)>,
+    current_service: Res<CurrentService>,
+    mut buttons: Query<(&TargetService, &mut BackgroundColor), With<Button>>,
+    mut timelines: Query<(&Timeline, &Description, &mut Text)>,
+) {
+    for (e, res) in results.iter() {
+        let string = res.as_str().unwrap();
+        let json: Value = serde_json::from_str(string).expect("invalid data received");
+        let Some((data, _)) = parse_json(&json) else {
+            return;
+        };
+
+        // update button colors
+        for (service, mut color) in &mut buttons {
+            if current_service.0 == service.0 {
+                *color = ACTIVE_CHANNEL_COLOR.into();
+            }
+        }
+        // update contents table
+        for (timeline, description, mut text) in &mut timelines {
+            match description {
+                Description::StartTime => {
+                    text.sections[0].value = DateTime::parse_from_rfc3339(
+                        data[format!("{timeline:?}")]["start_time"]
+                            .as_str()
+                            .unwrap(),
+                    )
+                    .unwrap()
+                    .format("%H:%M")
+                    .to_string();
+                }
+                Description::Title => {
+                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["title"]);
+                }
+                Description::Subtitle => {
+                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["subtitle"]);
+                }
+            }
+        }
+        // Done with this entity
+        commands.entity(e).despawn_recursive();
+    }
+}
+
+fn unquote(s: &Value) -> String {
+    s.as_str().unwrap_or("").to_string()
 }
