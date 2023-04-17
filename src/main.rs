@@ -462,12 +462,10 @@ fn handle_responses(
                     .to_string();
                 }
                 Description::Title => {
-                    text.sections[0].value =
-                        unquote(false, &data[format!("{timeline:?}")]["title"]);
+                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["title"]);
                 }
                 Description::Subtitle => {
-                    text.sections[0].value =
-                        unquote(true, &data[format!("{timeline:?}")]["subtitle"]);
+                    text.sections[0].value = unquote(&data[format!("{timeline:?}")]["subtitle"]);
                 }
             }
         }
@@ -476,18 +474,6 @@ fn handle_responses(
     }
 }
 
-fn unquote(line_break: bool, s: &Value) -> String {
-    if let Some(s) = s.as_str() {
-        let mut t = String::new();
-        let at = 50;
-        for (i, c) in s.chars().enumerate() {
-            t.push(c);
-            if line_break && i % at == at - 1 {
-                t.push('\n');
-            }
-        }
-        t
-    } else {
-        String::new()
-    }
+fn unquote(s: &Value) -> String {
+    s.as_str().unwrap_or("").to_string()
 }
