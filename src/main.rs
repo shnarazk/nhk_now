@@ -121,7 +121,7 @@ fn main() {
             }),
             ..Default::default()
         }))
-        .add_plugin(ReqwestPlugin)
+        .add_plugins(ReqwestPlugin)
         .insert_resource(WinitSettings::desktop_app())
         .insert_resource(app_config)
         .insert_resource(CurrentService(Service::None))
@@ -138,7 +138,7 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
         .spawn(NodeBundle {
             style: Style {
                 // fill the entire window
-                size: Size::all(Val::Percent(100.)),
+                height: Val::Percent(100.),
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
                 ..Default::default()
@@ -193,7 +193,7 @@ fn spawn_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             builder
                 .spawn(NodeBundle {
                     style: Style {
-                        min_size: Size::new(Val::Percent(96.), Val::Percent(100.)),
+                        min_height: Val::Percent(100.),
                         flex_direction: FlexDirection::Column,
                         // flex_direction: FlexDirection::Row,
                         ..Default::default()
@@ -214,7 +214,7 @@ fn spawn_timeline_text_bundle(builder: &mut ChildBuilder, font: Handle<Font>, ti
             style: Style {
                 flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::FlexStart,
-                size: Size::new(Val::Percent(100.), Val::Percent(14.)),
+                height: Val::Percent(100.),
                 // margin,
                 padding: UiRect {
                     top: Val::Px(3.),
@@ -234,7 +234,7 @@ fn spawn_timeline_text_bundle(builder: &mut ChildBuilder, font: Handle<Font>, ti
                         flex_direction: FlexDirection::Row,
                         flex_wrap: FlexWrap::Wrap,
                         justify_content: JustifyContent::FlexStart,
-                        size: Size::new(Val::Percent(100.), Val::Percent(10.)),
+                        height: Val::Percent(100.),
                         //  margin,
                         padding: UiRect {
                             top: Val::Px(1.),
@@ -258,7 +258,7 @@ fn spawn_timeline_text_bundle(builder: &mut ChildBuilder, font: Handle<Font>, ti
                             },
                         )
                         .with_style(Style {
-                            size: Size::new(Val::Percent(15.0), Val::Px(80.0)),
+                            height: Val::Px(80.0),
                             flex_wrap: FlexWrap::Wrap,
                             ..default()
                         }),
@@ -275,7 +275,7 @@ fn spawn_timeline_text_bundle(builder: &mut ChildBuilder, font: Handle<Font>, ti
                             },
                         )
                         .with_style(Style {
-                            size: Size::new(Val::Percent(85.0), Val::Px(80.0)),
+                            height: Val::Px(80.0),
                             flex_wrap: FlexWrap::Wrap,
                             ..default()
                         }),
@@ -291,7 +291,7 @@ fn spawn_timeline_text_bundle(builder: &mut ChildBuilder, font: Handle<Font>, ti
                 flex_wrap: FlexWrap::Wrap,
                 // justify_content: JustifyContent::Center,
                 justify_content: JustifyContent::FlexStart,
-                size: Size::new(Val::Percent(100.), Val::Percent(15.)),
+                height: Val::Percent(15.),
                 // margin,
                 padding: UiRect {
                     top: Val::Px(1.),
@@ -347,7 +347,7 @@ fn spawn_styled_button_bundle(
                 .spawn((
                     ButtonBundle {
                         style: Style {
-                            size: Size::new(Val::Px(120.0), Val::Px(30.0)),
+                            height: Val::Px(30.0),
                             // horizontally center child text
                             justify_content: JustifyContent::Center,
                             // vertically center child text
@@ -380,7 +380,7 @@ fn button_system(
     interaction_query: Query<(&Interaction, &TargetService), ButtonLike>,
 ) {
     for (interaction, target) in &interaction_query {
-        if *interaction == Interaction::Clicked {
+        if *interaction == Interaction::Pressed {
             current_service.0 = target.0.clone();
             triggered.0 = true;
         }
