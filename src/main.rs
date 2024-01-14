@@ -1,18 +1,19 @@
 #![allow(dead_code, unused_imports)]
+
 use {
     chrono::DateTime,
     clap::Parser,
     iced::{
-        font,
+        executor, font,
         widget::{button, column, horizontal_space, row, text},
-        Alignment, Element, Sandbox, Settings,
+        Alignment, Application, Command, Element, Sandbox, Settings, Theme,
     },
     // nhk_now::reqwest_plugin::*,
     serde_json::Value,
 };
 
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
-enum Service {
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
+pub enum Service {
     None,
     G1,
     E1,
@@ -97,40 +98,45 @@ struct AppConfig {
 #[derive(Clone, Debug, Default, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Counter {
     value: isize,
+    json: usize,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Message {
-    IncrementPressed,
-    DecrementPressed,
+    SwitchTo(Service),
+    Reloading,
+    JsonLoaded,
 }
 
-impl Sandbox for Counter {
+impl Application for Counter {
+    type Executor = executor::Default;
+    type Theme = Theme;
+    type Flags = ();
     type Message = Message;
-    fn new() -> Self {
-        Self::default()
+    fn new(_flags: ()) -> (Self, Command<Self::Message>) {
+        (Self::default(), Command::none())
     }
     fn view(&self) -> Element<Message> {
         column![
             row![
                 button("NHK総合")
-                    .padding([20, 25])
-                    .on_press(Message::DecrementPressed),
+                    .padding([10, 5])
+                    .on_press(Message::SwitchTo(Service::G1)),
                 button("NHKEテレ")
-                    .padding([20, 25])
-                    .on_press(Message::DecrementPressed),
+                    .padding([10, 5])
+                    .on_press(Message::SwitchTo(Service::E1)),
                 button("NHK FM")
-                    .padding([20, 25])
-                    .on_press(Message::DecrementPressed),
+                    .padding([10, 5])
+                    .on_press(Message::SwitchTo(Service::R3)),
                 button("NHK Radio第1")
-                    .padding([20, 25])
-                    .on_press(Message::DecrementPressed),
-                button("情報更新")
-                    .padding([20, 25])
-                    .on_press(Message::DecrementPressed),
+                    .padding([10, 5])
+                    .on_press(Message::SwitchTo(Service::R1)),
+                button("NHK Radio第2")
+                    .padding([10, 5])
+                    .on_press(Message::SwitchTo(Service::R2)),
             ]
-            .spacing(10)
-            .padding(20)
+            .spacing(5)
+            .padding(5)
             .align_items(Alignment::Center),
             row![
                 text(""),
@@ -143,9 +149,9 @@ impl Sandbox for Counter {
             row![
                 text("次番組"),
                 horizontal_space(30),
-                text(""),
+                text("News7"),
                 horizontal_space(30),
-                text(""),
+                text("いろいろなニュースと気象予報"),
                 horizontal_space(30),
             ],
             row![
@@ -170,13 +176,13 @@ impl Sandbox for Counter {
         .into()
     }
     fn title(&self) -> String {
-        String::from("Counter -- iced")
+        String::from("NHK now")
     }
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            Message::IncrementPressed => self.value += 1,
-            Message::DecrementPressed => self.value -= 1,
+            _ => (),
         }
+        Command::none()
     }
 }
 
@@ -184,5 +190,6 @@ fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
     settings.default_text_size = 18.0;
+    settings.window.size = (640, 280);
     Counter::run(settings)
 }
