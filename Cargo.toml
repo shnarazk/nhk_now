@@ -7,9 +7,9 @@ edition = "2021"
 chrono = { version = "^0.4" }
 clap = { version = "^4.1", features = ["derive", "env"] }
 iced = { version = "0.10.0", features = ["wgpu", "tokio", "image"]}
-reqwest = "0.11.16"
+# reqwest = "0.11.16"
 serde_json = { version = "^1.0" }
-futures-lite = "1.13.0"
-async-compat = "0.2.1"
-bytes = "1.4.0"
+# futures-lite = "1.13.0"
+# async-compat = "0.2.1"
+# bytes = "1.4.0"
 serde = "1.0.159"
