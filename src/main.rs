@@ -8,9 +8,12 @@ use {
         widget::{button, column, horizontal_space, row, text},
         Alignment, Application, Command, Element, Sandbox, Settings, Theme,
     },
-    // nhk_now::reqwest_plugin::*,
+    reqwest::{Method, Request},
     serde_json::Value,
 };
+
+// populate with area, service, api_key
+const URL_TEMPLATE: &str = "https://api.nhk.or.jp/v2/pg/now";
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Service {
@@ -96,7 +99,7 @@ struct AppConfig {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, PartialOrd, Ord)]
-pub struct Counter {
+pub struct NhkView {
     value: isize,
     json: usize,
 }
@@ -108,7 +111,7 @@ pub enum Message {
     JsonLoaded,
 }
 
-impl Application for Counter {
+impl Application for NhkView {
     type Executor = executor::Default;
     type Theme = Theme;
     type Flags = ();
@@ -180,7 +183,9 @@ impl Application for Counter {
     }
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            _ => (),
+            Message::SwitchTo(_service) => (),
+            Message::Reloading => (),
+            Message::JsonLoaded => (),
         }
         Command::none()
     }
@@ -191,5 +196,12 @@ fn main() -> iced::Result {
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
     settings.default_text_size = 16.0;
     settings.window.size = (640, 240);
-    Counter::run(settings)
+    let Ok(url) = format!("{}/{}/{:?}.json?key={}", URL_TEMPLATE, "", "", "")
+        .as_str()
+        .try_into()
+    else {
+        panic!();
+    };
+    let _req = Request::new(Method::GET, url);
+    NhkView::run(settings)
 }
