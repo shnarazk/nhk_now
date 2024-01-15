@@ -139,35 +139,35 @@ impl Application for Counter {
             .padding(5)
             .align_items(Alignment::Center),
             row![
-                text(""),
+                text("").width(60),
                 horizontal_space(30),
-                text("タイトル"),
+                text("タイトル").width(200),
                 horizontal_space(30),
-                text("内容"),
-                horizontal_space(30),
-            ],
-            row![
-                text("次番組"),
-                horizontal_space(30),
-                text("News7"),
-                horizontal_space(30),
-                text("いろいろなニュースと気象予報"),
+                text("内容").width(300),
                 horizontal_space(30),
             ],
             row![
-                text("現番組"),
+                text("次番組").width(60),
                 horizontal_space(30),
-                text(""),
+                text("News7").width(200),
                 horizontal_space(30),
-                text(""),
+                text("いろいろなニュースと気象予報").width(300),
                 horizontal_space(30),
             ],
             row![
-                text("前番組"),
+                text("現番組").width(60),
                 horizontal_space(30),
-                text(""),
+                text("").width(200),
                 horizontal_space(30),
-                text(""),
+                text("").width(300),
+                horizontal_space(30),
+            ],
+            row![
+                text("前番組").width(60),
+                horizontal_space(30),
+                text("").width(200),
+                horizontal_space(30),
+                text("").width(300),
                 horizontal_space(30),
             ],
         ]
@@ -189,7 +189,7 @@ impl Application for Counter {
 fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
-    settings.default_text_size = 18.0;
-    settings.window.size = (640, 280);
+    settings.default_text_size = 16.0;
+    settings.window.size = (640, 240);
     Counter::run(settings)
 }
