@@ -29,8 +29,9 @@ static CONFIG: OnceCell<AppConfig> = OnceCell::new();
 // populate with area, service, api_key
 const URL_TEMPLATE: &str = "https://api.nhk.or.jp/v2/pg/now";
 
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Default, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Service {
+    #[default]
     None,
     G1,
     E1,
@@ -103,8 +104,8 @@ enum Description {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct NhkView {
-    value: isize,
-    json: Value,
+    service: Service,
+    json: Option<Value>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -128,34 +129,80 @@ impl Application for NhkView {
         (Self::default(), Command::none())
     }
     fn view(&self) -> Element<Message> {
+        let description_font_size = 11;
+        let service = format!("{:?}", self.service);
+        let on_air = self
+            .json
+            .as_ref()
+            .and_then(|j| j.get("nowonair_list"))
+            .and_then(|ch| ch.get(service));
+
+        let following_start = on_air
+            .and_then(|data| data.get("following"))
+            .and_then(|data| data.get("start_time"))
+            .map_or_else(|| "".to_string(), |v| v.to_string());
+        let following_title = on_air
+            .and_then(|data| data.get("following"))
+            .and_then(|data| data.get("title"))
+            .map_or_else(|| "".to_string(), |v| v.to_string());
+        let following_subtitle = on_air
+            .and_then(|data| data.get("following"))
+            .and_then(|data| data.get("subtitle"))
+            .map_or_else(|| "".to_string(), |v| v.to_string());
+
+        let present_start = on_air
+            .and_then(|data| data.get("present"))
+            .and_then(|data| data.get("start_time"))
+            .map_or_else(|| "".to_string(), |v| v.to_string());
+        let present_title = on_air
+            .and_then(|data| data.get("present"))
+            .and_then(|data| data.get("title"))
+            .map_or_else(|| "".to_string(), |v| v.to_string());
+        let present_subtitle = on_air
+            .and_then(|data| data.get("present"))
+            .and_then(|data| data.get("subtitle"))
+            .map_or_else(|| "".to_string(), |v| v.to_string());
+
+        let previous_start = on_air
+            .and_then(|data| data.get("previous"))
+            .and_then(|data| data.get("start_time"))
+            .map_or_else(|| "".to_string(), |v| v.to_string());
+        let previous_title = on_air
+            .and_then(|data| data.get("previous"))
+            .and_then(|data| data.get("title"))
+            .map_or_else(|| "".to_string(), |v| v.to_string());
+        let previous_subtitle = on_air
+            .and_then(|data| data.get("previous"))
+            .and_then(|data| data.get("subtitle"))
+            .map_or_else(|| "".to_string(), |v| v.to_string());
         column![
             row![
                 button("NHK総合")
                     .width(120)
-                    .padding([10, 5])
+                    .padding([5, 2])
                     .on_press(Message::SwitchTo(Service::G1)),
                 button("Eテレ")
                     .width(120)
-                    .padding([10, 5])
+                    .padding([5, 2])
                     .on_press(Message::SwitchTo(Service::E1)),
                 button("NHK FM")
                     .width(120)
-                    .padding([10, 5])
+                    .padding([5, 2])
                     .on_press(Message::SwitchTo(Service::R3)),
                 button("ラジオ第1")
                     .width(120)
-                    .padding([10, 5])
+                    .padding([5, 2])
                     .on_press(Message::SwitchTo(Service::R1)),
                 button("ラジオ第2")
                     .width(120)
-                    .padding([10, 5])
+                    .padding([5, 2])
                     .on_press(Message::SwitchTo(Service::R2)),
             ]
             .spacing(5)
             // .padding(5)
             .align_items(Alignment::Center),
             row![
-                text("").width(60),
+                text("開始時刻").width(100),
                 horizontal_space(30),
                 text("タイトル").width(200),
                 horizontal_space(30),
@@ -163,27 +210,33 @@ impl Application for NhkView {
                 horizontal_space(30),
             ],
             row![
-                text("次番組").width(60),
+                text(following_start).size(description_font_size).width(100),
                 horizontal_space(30),
-                text("News7").width(200),
+                text(following_title).size(description_font_size).width(200),
                 horizontal_space(30),
-                text("いろいろなニュースと気象予報").width(300),
-                horizontal_space(30),
-            ],
-            row![
-                text("現番組").width(60),
-                horizontal_space(30),
-                text("").width(200),
-                horizontal_space(30),
-                text("").width(300),
+                text(following_subtitle)
+                    .size(description_font_size)
+                    .width(300),
                 horizontal_space(30),
             ],
             row![
-                text("前番組").width(60),
+                text(present_start).size(description_font_size).width(100),
                 horizontal_space(30),
-                text("").width(200),
+                text(present_title).size(description_font_size).width(200),
                 horizontal_space(30),
-                text("").width(300),
+                text(present_subtitle)
+                    .size(description_font_size)
+                    .width(300),
+                horizontal_space(30),
+            ],
+            row![
+                text(previous_start).size(description_font_size).width(100),
+                horizontal_space(30),
+                text(previous_title).size(description_font_size).width(200),
+                horizontal_space(30),
+                text(previous_subtitle)
+                    .size(description_font_size)
+                    .width(300),
                 horizontal_space(30),
             ],
         ]
@@ -199,7 +252,11 @@ impl Application for NhkView {
                 Command::perform(NhkView::get_data(service), Message::JsonLoaded)
             }
             Message::Reloading => Command::none(),
-            Message::JsonLoaded(_) => Command::none(),
+            Message::JsonLoaded(Ok(data)) => {
+                *self = data;
+                Command::none()
+            }
+            _ => Command::none(),
         }
     }
 }
@@ -216,10 +273,9 @@ impl NhkView {
         let Ok(text) = &reqwest::get(url).await.ok().unwrap().text().await else {
             panic!();
         };
-        dbg!(text);
         Ok(Self {
-            value: 1,
-            json: serde_json::from_str(text).ok().unwrap(),
+            service,
+            json: dbg!(serde_json::from_str(text).ok().unwrap()),
         })
     }
 }
