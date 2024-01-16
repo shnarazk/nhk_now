@@ -8,9 +8,23 @@ use {
         widget::{button, column, horizontal_space, row, text},
         Alignment, Application, Command, Element, Sandbox, Settings, Theme,
     },
+    once_cell::sync::OnceCell,
     reqwest::{Method, Request},
     serde_json::Value,
 };
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser)]
+#[clap(author, version, about)]
+struct AppConfig {
+    /// area code
+    #[clap(short = 'a', default_value = "400")]
+    area: u32,
+    /// API key
+    #[clap(short = 'k', long = "key", env)]
+    api_key: String,
+}
+
+static CONFIG: OnceCell<AppConfig> = OnceCell::new();
 
 // populate with area, service, api_key
 const URL_TEMPLATE: &str = "https://api.nhk.or.jp/v2/pg/now";
@@ -85,17 +99,6 @@ enum Description {
     StartTime,
     Title,
     Subtitle,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser)]
-#[clap(author, version, about)]
-struct AppConfig {
-    /// area code
-    #[clap(short = 'a', default_value = "400")]
-    area: u32,
-    /// API key
-    #[clap(short = 'k', long = "key", env)]
-    nhk_api_key: String,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -192,8 +195,8 @@ impl Application for NhkView {
     }
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            Message::SwitchTo(_service) => {
-                Command::perform(NhkView::get_data(), Message::JsonLoaded)
+            Message::SwitchTo(service) => {
+                Command::perform(NhkView::get_data(service), Message::JsonLoaded)
             }
             Message::Reloading => Command::none(),
             Message::JsonLoaded(_) => Command::none(),
@@ -202,8 +205,14 @@ impl Application for NhkView {
 }
 
 impl NhkView {
-    async fn get_data() -> Result<Self, Error> {
-        let url = format!("{}/{}/{:?}.json?key={}", URL_TEMPLATE, "", "", "");
+    async fn get_data(service: Service) -> Result<Self, Error> {
+        let Some(config) = CONFIG.get() else {
+            panic!();
+        };
+        let url = format!(
+            "{}/{}/{:?}.json?key={}",
+            URL_TEMPLATE, config.area, service, config.api_key
+        );
         let Ok(text) = &reqwest::get(url).await.ok().unwrap().text().await else {
             panic!();
         };
@@ -216,6 +225,10 @@ impl NhkView {
 }
 
 fn main() -> iced::Result {
+    let config = AppConfig::parse();
+    if CONFIG.get().is_none() {
+        CONFIG.set(config.clone()).expect("fail to store config");
+    }
     let mut settings = Settings::default();
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
     settings.default_text_size = 16.0;
