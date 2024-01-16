@@ -4,7 +4,7 @@ use {
     chrono::DateTime,
     clap::Parser,
     iced::{
-        executor, font,
+        executor, font, futures,
         widget::{button, column, horizontal_space, row, text},
         Alignment, Application, Command, Element, Sandbox, Settings, Theme,
     },
@@ -98,10 +98,10 @@ struct AppConfig {
     nhk_api_key: String,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct NhkView {
     value: isize,
-    json: usize,
+    json: Value,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -191,17 +191,23 @@ impl Application for NhkView {
     }
 }
 
+impl NhkView {
+    async fn get_data() -> Result<Self, ()> {
+        let url = format!("{}/{}/{:?}.json?key={}", URL_TEMPLATE, "", "", "");
+        let Ok(text) = &reqwest::get(url).await.ok().unwrap().text().await else {
+            panic!();
+        };
+        Ok(Self {
+            value: 1,
+            json: serde_json::from_str(text).ok().unwrap(),
+        })
+    }
+}
+
 fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
     settings.default_text_size = 16.0;
     settings.window.size = (640, 240);
-    let Ok(url) = format!("{}/{}/{:?}.json?key={}", URL_TEMPLATE, "", "", "")
-        .as_str()
-        .try_into()
-    else {
-        panic!();
-    };
-    let _req = Request::new(Method::GET, url);
     NhkView::run(settings)
 }
