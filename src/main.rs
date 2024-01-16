@@ -140,41 +140,89 @@ impl Application for NhkView {
         let following_start = on_air
             .and_then(|data| data.get("following"))
             .and_then(|data| data.get("start_time"))
-            .map_or_else(|| "".to_string(), |v| v.to_string());
+            .map_or_else(
+                || "".to_string(),
+                |v| {
+                    v.to_string()
+                        .trim_matches('"')
+                        .chars()
+                        .skip(11)
+                        .take(5)
+                        .collect::<String>()
+                },
+            );
         let following_title = on_air
             .and_then(|data| data.get("following"))
             .and_then(|data| data.get("title"))
-            .map_or_else(|| "".to_string(), |v| v.to_string());
+            .map_or_else(
+                || "".to_string(),
+                |v| v.to_string().trim_matches('"').to_string(),
+            );
         let following_subtitle = on_air
             .and_then(|data| data.get("following"))
             .and_then(|data| data.get("subtitle"))
-            .map_or_else(|| "".to_string(), |v| v.to_string());
+            .map_or_else(
+                || "".to_string(),
+                |v| v.to_string().trim_matches('"').to_string(),
+            );
 
         let present_start = on_air
             .and_then(|data| data.get("present"))
             .and_then(|data| data.get("start_time"))
-            .map_or_else(|| "".to_string(), |v| v.to_string());
+            .map_or_else(
+                || "".to_string(),
+                |v| {
+                    v.to_string()
+                        .trim_matches('"')
+                        .chars()
+                        .skip(11)
+                        .take(5)
+                        .collect::<String>()
+                },
+            );
         let present_title = on_air
             .and_then(|data| data.get("present"))
             .and_then(|data| data.get("title"))
-            .map_or_else(|| "".to_string(), |v| v.to_string());
+            .map_or_else(
+                || "".to_string(),
+                |v| v.to_string().trim_matches('"').to_string(),
+            );
         let present_subtitle = on_air
             .and_then(|data| data.get("present"))
             .and_then(|data| data.get("subtitle"))
-            .map_or_else(|| "".to_string(), |v| v.to_string());
+            .map_or_else(
+                || "".to_string(),
+                |v| v.to_string().trim_matches('"').to_string(),
+            );
 
         let previous_start = on_air
             .and_then(|data| data.get("previous"))
             .and_then(|data| data.get("start_time"))
-            .map_or_else(|| "".to_string(), |v| v.to_string());
+            .map_or_else(
+                || "".to_string(),
+                |v| {
+                    v.to_string()
+                        .trim_matches('"')
+                        .chars()
+                        .skip(11)
+                        .take(5)
+                        .collect::<String>()
+                },
+            );
         let previous_title = on_air
             .and_then(|data| data.get("previous"))
             .and_then(|data| data.get("title"))
-            .map_or_else(|| "".to_string(), |v| v.to_string());
+            .map_or_else(
+                || "".to_string(),
+                |v| v.to_string().trim_matches('\"').to_string(),
+            );
         let previous_subtitle = on_air
             .and_then(|data| data.get("previous"))
             .and_then(|data| data.get("subtitle"))
-            .map_or_else(|| "".to_string(), |v| v.to_string());
+            .map_or_else(
+                || "".to_string(),
+                |v| v.to_string().trim_matches('"').to_string(),
+            );
         column![
             row![
                 button("NHK総合")
@@ -198,47 +246,51 @@ impl Application for NhkView {
                     .padding([5, 2])
                     .on_press(Message::SwitchTo(Service::R2)),
             ]
-            .spacing(5)
+            .spacing(4)
             // .padding(5)
             .align_items(Alignment::Center),
             row![
-                text("開始時刻").width(100),
+                text(following_start).width(50),
                 horizontal_space(30),
-                text("タイトル").width(200),
-                horizontal_space(30),
-                text("内容").width(300),
-                horizontal_space(30),
-            ],
+                text(following_title).width(540),
+            ]
+            .padding(4),
             row![
-                text(following_start).size(description_font_size).width(100),
-                horizontal_space(30),
-                text(following_title).size(description_font_size).width(200),
                 horizontal_space(30),
                 text(following_subtitle)
                     .size(description_font_size)
-                    .width(300),
+                    .width(550),
                 horizontal_space(30),
-            ],
+            ]
+            .align_items(Alignment::Start),
             row![
-                text(present_start).size(description_font_size).width(100),
+                text(present_start).width(50),
                 horizontal_space(30),
-                text(present_title).size(description_font_size).width(200),
+                text(present_title).width(540),
+            ]
+            .padding(4),
+            row![
                 horizontal_space(30),
                 text(present_subtitle)
                     .size(description_font_size)
-                    .width(300),
+                    .width(550),
                 horizontal_space(30),
-            ],
+            ]
+            .align_items(Alignment::Start),
             row![
-                text(previous_start).size(description_font_size).width(100),
+                text(previous_start).width(50),
                 horizontal_space(30),
-                text(previous_title).size(description_font_size).width(200),
+                text(previous_title).width(540),
+            ]
+            .padding(4),
+            row![
                 horizontal_space(30),
                 text(previous_subtitle)
                     .size(description_font_size)
-                    .width(300),
+                    .width(550),
                 horizontal_space(30),
-            ],
+            ]
+            .align_items(Alignment::Start),
         ]
         .spacing(10)
         .into()
@@ -275,7 +327,7 @@ impl NhkView {
         };
         Ok(Self {
             service,
-            json: dbg!(serde_json::from_str(text).ok().unwrap()),
+            json: serde_json::from_str(text).ok().unwrap(),
         })
     }
 }
@@ -287,7 +339,7 @@ fn main() -> iced::Result {
     }
     let mut settings = Settings::default();
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
-    settings.default_text_size = 16.0;
-    settings.window.size = (620, 240);
+    settings.default_text_size = 13.0;
+    settings.window.size = (620, 300);
     NhkView::run(settings)
 }
