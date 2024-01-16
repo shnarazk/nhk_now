@@ -104,11 +104,16 @@ pub struct NhkView {
     json: Value,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum Error {
+    APIError,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Message {
     SwitchTo(Service),
     Reloading,
-    JsonLoaded,
+    JsonLoaded(Result<NhkView, Error>),
 }
 
 impl Application for NhkView {
@@ -123,23 +128,28 @@ impl Application for NhkView {
         column![
             row![
                 button("NHK総合")
+                    .width(120)
                     .padding([10, 5])
                     .on_press(Message::SwitchTo(Service::G1)),
-                button("NHKEテレ")
+                button("Eテレ")
+                    .width(120)
                     .padding([10, 5])
                     .on_press(Message::SwitchTo(Service::E1)),
                 button("NHK FM")
+                    .width(120)
                     .padding([10, 5])
                     .on_press(Message::SwitchTo(Service::R3)),
-                button("NHK Radio第1")
+                button("ラジオ第1")
+                    .width(120)
                     .padding([10, 5])
                     .on_press(Message::SwitchTo(Service::R1)),
-                button("NHK Radio第2")
+                button("ラジオ第2")
+                    .width(120)
                     .padding([10, 5])
                     .on_press(Message::SwitchTo(Service::R2)),
             ]
             .spacing(5)
-            .padding(5)
+            // .padding(5)
             .align_items(Alignment::Center),
             row![
                 text("").width(60),
@@ -175,7 +185,6 @@ impl Application for NhkView {
             ],
         ]
         .spacing(10)
-        .padding(20)
         .into()
     }
     fn title(&self) -> String {
@@ -183,20 +192,22 @@ impl Application for NhkView {
     }
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            Message::SwitchTo(_service) => (),
-            Message::Reloading => (),
-            Message::JsonLoaded => (),
+            Message::SwitchTo(_service) => {
+                Command::perform(NhkView::get_data(), Message::JsonLoaded)
+            }
+            Message::Reloading => Command::none(),
+            Message::JsonLoaded(_) => Command::none(),
         }
-        Command::none()
     }
 }
 
 impl NhkView {
-    async fn get_data() -> Result<Self, ()> {
+    async fn get_data() -> Result<Self, Error> {
         let url = format!("{}/{}/{:?}.json?key={}", URL_TEMPLATE, "", "", "");
         let Ok(text) = &reqwest::get(url).await.ok().unwrap().text().await else {
             panic!();
         };
+        dbg!(text);
         Ok(Self {
             value: 1,
             json: serde_json::from_str(text).ok().unwrap(),
@@ -208,6 +219,6 @@ fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
     settings.default_text_size = 16.0;
-    settings.window.size = (640, 240);
+    settings.window.size = (620, 240);
     NhkView::run(settings)
 }
