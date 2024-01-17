@@ -164,30 +164,33 @@ impl Application for NhkView {
                 .align_items(Alignment::Start)
             };
         }
-
+        macro_rules! button_color {
+            ($service: expr) => {
+                if self.service == $service {
+                    iced::theme::Button::Positive
+                } else {
+                    iced::theme::Button::Secondary
+                }
+            };
+        }
+        macro_rules! button {
+            ($name: expr, $service: expr) => {
+                button($name)
+                    .width(120)
+                    .padding([5, 2])
+                    .style(button_color!($service))
+                    .on_press(Message::SwitchTo($service))
+                    .into()
+            };
+        }
         column![
-            row![
-                button("NHK総合")
-                    .width(120)
-                    .padding([5, 2])
-                    .on_press(Message::SwitchTo(Service::G1)),
-                button("Eテレ")
-                    .width(120)
-                    .padding([5, 2])
-                    .on_press(Message::SwitchTo(Service::E1)),
-                button("NHK FM")
-                    .width(120)
-                    .padding([5, 2])
-                    .on_press(Message::SwitchTo(Service::R3)),
-                button("ラジオ第1")
-                    .width(120)
-                    .padding([5, 2])
-                    .on_press(Message::SwitchTo(Service::R1)),
-                button("ラジオ第2")
-                    .width(120)
-                    .padding([5, 2])
-                    .on_press(Message::SwitchTo(Service::R2)),
-            ]
+            row(vec![
+                button!("NHK 総合", Service::G1),
+                button!("NHK Eテレ", Service::E1),
+                button!("NHK FM", Service::R3),
+                button!("ラジオ第1", Service::R1),
+                button!("ラジオ第2", Service::R2),
+            ])
             .spacing(4)
             // .padding(5)
             .align_items(Alignment::Center),
