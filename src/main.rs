@@ -65,41 +65,13 @@ impl std::fmt::Display for Service {
             match self {
                 Service::None => "",
                 Service::G1 => "NHK総合1",
-                Service::E1 => "NHKEテレ1",
-                Service::R1 => "NHKラジオ第1",
-                Service::R2 => "NHKラジオ第2",
+                Service::E1 => "Eテレ1",
+                Service::R1 => "ラジオ第1",
+                Service::R2 => "ラジオ第2",
                 Service::R3 => "NHK FM",
             }
         )
     }
-}
-
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
-enum Timeline {
-    Following,
-    Present,
-    Previous,
-}
-
-impl std::fmt::Debug for Timeline {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Timeline::Following => "following",
-                Timeline::Present => "present",
-                Timeline::Previous => "previous",
-            }
-        )
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-enum Description {
-    StartTime,
-    Title,
-    Subtitle,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -120,6 +92,40 @@ pub enum Message {
     JsonLoaded(Result<NhkView, Error>),
 }
 
+trait ParseOnAirJson {
+    fn get_content(&self, timeline: &str) -> (String, String, String);
+}
+
+impl ParseOnAirJson for Option<&Value> {
+    fn get_content(&self, timeline: &str) -> (String, String, String) {
+        let description = self.and_then(|data| data.get(timeline));
+        let start = description
+            .and_then(|data| data.get("start_time"))
+            .map_or_else(
+                || "".to_string(),
+                |v| {
+                    v.to_string()
+                        .trim_matches('"')
+                        .chars()
+                        .skip(11)
+                        .take(5)
+                        .collect::<String>()
+                },
+            );
+        let title = description.and_then(|data| data.get("title")).map_or_else(
+            || "".to_string(),
+            |v| v.to_string().trim_matches('"').to_string(),
+        );
+        let subtitle = description
+            .and_then(|data| data.get("subtitle"))
+            .map_or_else(
+                || "".to_string(),
+                |v| v.to_string().trim_matches('"').to_string(),
+            );
+        (start, title, subtitle)
+    }
+}
+
 impl Application for NhkView {
     type Executor = executor::Default;
     type Theme = Theme;
@@ -130,99 +136,35 @@ impl Application for NhkView {
     }
     fn view(&self) -> Element<Message> {
         let description_font_size = 11;
-        let service = format!("{:?}", self.service);
         let on_air = self
             .json
             .as_ref()
             .and_then(|j| j.get("nowonair_list"))
-            .and_then(|ch| ch.get(service));
+            .and_then(|ch| ch.get(format!("{:?}", self.service)));
+        let following = on_air.get_content("following");
+        let present = on_air.get_content("present");
+        let previous = on_air.get_content("previous");
+        macro_rules! row1 {
+            ($value: expr) => {
+                row![
+                    text($value.0).width(50),
+                    horizontal_space(30),
+                    text($value.1).width(540),
+                ]
+                .padding(4)
+            };
+        }
+        macro_rules! row2 {
+            ($value: expr) => {
+                row![
+                    horizontal_space(30),
+                    text($value.2).size(description_font_size).width(550),
+                    horizontal_space(30),
+                ]
+                .align_items(Alignment::Start)
+            };
+        }
 
-        let following_start = on_air
-            .and_then(|data| data.get("following"))
-            .and_then(|data| data.get("start_time"))
-            .map_or_else(
-                || "".to_string(),
-                |v| {
-                    v.to_string()
-                        .trim_matches('"')
-                        .chars()
-                        .skip(11)
-                        .take(5)
-                        .collect::<String>()
-                },
-            );
-        let following_title = on_air
-            .and_then(|data| data.get("following"))
-            .and_then(|data| data.get("title"))
-            .map_or_else(
-                || "".to_string(),
-                |v| v.to_string().trim_matches('"').to_string(),
-            );
-        let following_subtitle = on_air
-            .and_then(|data| data.get("following"))
-            .and_then(|data| data.get("subtitle"))
-            .map_or_else(
-                || "".to_string(),
-                |v| v.to_string().trim_matches('"').to_string(),
-            );
-
-        let present_start = on_air
-            .and_then(|data| data.get("present"))
-            .and_then(|data| data.get("start_time"))
-            .map_or_else(
-                || "".to_string(),
-                |v| {
-                    v.to_string()
-                        .trim_matches('"')
-                        .chars()
-                        .skip(11)
-                        .take(5)
-                        .collect::<String>()
-                },
-            );
-        let present_title = on_air
-            .and_then(|data| data.get("present"))
-            .and_then(|data| data.get("title"))
-            .map_or_else(
-                || "".to_string(),
-                |v| v.to_string().trim_matches('"').to_string(),
-            );
-        let present_subtitle = on_air
-            .and_then(|data| data.get("present"))
-            .and_then(|data| data.get("subtitle"))
-            .map_or_else(
-                || "".to_string(),
-                |v| v.to_string().trim_matches('"').to_string(),
-            );
-
-        let previous_start = on_air
-            .and_then(|data| data.get("previous"))
-            .and_then(|data| data.get("start_time"))
-            .map_or_else(
-                || "".to_string(),
-                |v| {
-                    v.to_string()
-                        .trim_matches('"')
-                        .chars()
-                        .skip(11)
-                        .take(5)
-                        .collect::<String>()
-                },
-            );
-        let previous_title = on_air
-            .and_then(|data| data.get("previous"))
-            .and_then(|data| data.get("title"))
-            .map_or_else(
-                || "".to_string(),
-                |v| v.to_string().trim_matches('\"').to_string(),
-            );
-        let previous_subtitle = on_air
-            .and_then(|data| data.get("previous"))
-            .and_then(|data| data.get("subtitle"))
-            .map_or_else(
-                || "".to_string(),
-                |v| v.to_string().trim_matches('"').to_string(),
-            );
         column![
             row![
                 button("NHK総合")
@@ -249,48 +191,12 @@ impl Application for NhkView {
             .spacing(4)
             // .padding(5)
             .align_items(Alignment::Center),
-            row![
-                text(following_start).width(50),
-                horizontal_space(30),
-                text(following_title).width(540),
-            ]
-            .padding(4),
-            row![
-                horizontal_space(30),
-                text(following_subtitle)
-                    .size(description_font_size)
-                    .width(550),
-                horizontal_space(30),
-            ]
-            .align_items(Alignment::Start),
-            row![
-                text(present_start).width(50),
-                horizontal_space(30),
-                text(present_title).width(540),
-            ]
-            .padding(4),
-            row![
-                horizontal_space(30),
-                text(present_subtitle)
-                    .size(description_font_size)
-                    .width(550),
-                horizontal_space(30),
-            ]
-            .align_items(Alignment::Start),
-            row![
-                text(previous_start).width(50),
-                horizontal_space(30),
-                text(previous_title).width(540),
-            ]
-            .padding(4),
-            row![
-                horizontal_space(30),
-                text(previous_subtitle)
-                    .size(description_font_size)
-                    .width(550),
-                horizontal_space(30),
-            ]
-            .align_items(Alignment::Start),
+            row1!(following),
+            row2!(following),
+            row1!(present),
+            row2!(present),
+            row1!(previous),
+            row2!(previous),
         ]
         .spacing(10)
         .into()
@@ -340,6 +246,6 @@ fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
     settings.default_text_size = 13.0;
-    settings.window.size = (620, 300);
+    settings.window.size = (620, 270);
     NhkView::run(settings)
 }
