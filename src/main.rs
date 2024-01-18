@@ -21,7 +21,7 @@ struct AppConfig {
     area: u32,
     /// API key
     #[clap(short = 'k', long = "key", env)]
-    api_key: String,
+    nhk_api_key: String,
 }
 
 static CONFIG: OnceCell<AppConfig> = OnceCell::new();
@@ -229,7 +229,7 @@ impl NhkView {
         };
         let url = format!(
             "{}/{}/{:?}.json?key={}",
-            URL_TEMPLATE, config.area, service, config.api_key
+            URL_TEMPLATE, config.area, service, config.nhk_api_key
         );
         let Ok(text) = &reqwest::get(url).await.ok().unwrap().text().await else {
             panic!();
