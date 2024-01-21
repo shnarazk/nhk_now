@@ -185,15 +185,16 @@ impl Application for NhkView {
         }
         column![
             row(vec![
-                button!("NHK 総合", Service::G1),
-                button!("NHK Eテレ", Service::E1),
-                button!("NHK FM", Service::R3),
-                button!("ラジオ第1", Service::R1),
-                button!("ラジオ第2", Service::R2),
+                horizontal_space(1).into(),
+                button!(" NHK 総合", Service::G1),
+                button!(" NHK Eテレ", Service::E1),
+                button!(" NHK FM", Service::R3),
+                button!(" ラジオ第1", Service::R1),
+                button!(" ラジオ第2", Service::R2),
             ])
-            .spacing(4)
+            .spacing(4),
             // .padding(5)
-            .align_items(Alignment::Center),
+            // .align_items(Alignment::Center),
             row1!(following),
             row2!(following),
             row1!(present),
