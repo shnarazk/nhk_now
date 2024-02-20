@@ -148,7 +148,7 @@ impl Application for NhkView {
             ($value: expr) => {
                 row![
                     text($value.0).width(50),
-                    horizontal_space(30),
+                    horizontal_space(),
                     text($value.1).width(540),
                 ]
                 .padding(4)
@@ -157,9 +157,9 @@ impl Application for NhkView {
         macro_rules! row2 {
             ($value: expr) => {
                 row![
-                    horizontal_space(30),
+                    horizontal_space(),
                     text($value.2).size(description_font_size).width(550),
-                    horizontal_space(30),
+                    horizontal_space(),
                 ]
                 .align_items(Alignment::Start)
             };
@@ -185,7 +185,7 @@ impl Application for NhkView {
         }
         column![
             row(vec![
-                horizontal_space(1).into(),
+                horizontal_space().into(),
                 button!(" NHK 総合", Service::G1),
                 button!(" NHK Eテレ", Service::E1),
                 button!(" NHK FM", Service::R3),
@@ -249,7 +249,10 @@ fn main() -> iced::Result {
     }
     let mut settings = Settings::default();
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
-    settings.default_text_size = 13.0;
-    settings.window.size = (620, 270);
+    settings.default_text_size = iced::Pixels(13.0);
+    settings.window.size = iced::Size {
+        height: 270.0,
+        width: 620.0,
+    };
     NhkView::run(settings)
 }
