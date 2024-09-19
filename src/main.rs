@@ -5,14 +5,49 @@ use {
     clap::Parser,
     iced::{
         executor, font, futures,
-        widget::{button, column, horizontal_space, row, text},
-        Alignment, Application, Command, Element, Sandbox, Settings, Theme,
+        widget::{button, column, horizontal_space, row, text, Column},
+        Alignment, Application, /* Command, */ Element, /* Sandbox, */ Settings, Theme,
     },
     once_cell::sync::OnceCell,
     reqwest::{Method, Request},
     serde_json::Value,
 };
 
+#[derive(Default)]
+struct Counter {
+    value: i32,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Message {
+    Increment,
+    Decrement,
+}
+impl Counter {
+    pub fn update(&mut self, message: Message) {
+        match message {
+            Message::Increment => {
+                self.value += 1;
+            }
+            Message::Decrement => {
+                self.value -= 1;
+            }
+        }
+    }
+    fn view(&self) -> Column<Message> {
+        column![
+            button("+").on_press(Message::Increment),
+            text(self.value).size(50),
+            button("-").on_press(Message::Decrement),
+        ]
+    }
+}
+
+fn main() -> iced::Result {
+    iced::run("A cool counter", Counter::update, Counter::view)
+}
+
+/*
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser)]
 #[clap(author, version, about)]
 struct AppConfig {
@@ -256,3 +291,4 @@ fn main() -> iced::Result {
     };
     NhkView::run(settings)
 }
+*/
