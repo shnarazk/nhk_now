@@ -164,7 +164,7 @@ impl Application for NhkView {
                 .align_items(Alignment::Start)
             };
         }
-        macro_rules! button_color {
+        /* macro_rules! button_color {
             ($service: expr) => {
                 if self.service == $service {
                     iced::theme::Button::Positive
@@ -172,13 +172,13 @@ impl Application for NhkView {
                     iced::theme::Button::Secondary
                 }
             };
-        }
+        } */
         macro_rules! button {
             ($name: expr, $service: expr) => {
                 button($name)
                     .width(120)
                     .padding([5, 2])
-                    .style(button_color!($service))
+                    // .style(button_color!($service))
                     .on_press(Message::SwitchTo($service))
                     .into()
             };
