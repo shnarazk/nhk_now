@@ -13,41 +13,41 @@ use {
     serde_json::Value,
 };
 
+#[derive(Debug, Clone, Copy)]
+enum Message1 {
+    Increment,
+    Decrement,
+}
+
 #[derive(Default)]
 struct Counter {
     value: i32,
 }
 
-#[derive(Debug, Clone, Copy)]
-enum Message {
-    Increment,
-    Decrement,
-}
 impl Counter {
-    pub fn update(&mut self, message: Message) {
+    pub fn update(&mut self, message: Message1) {
         match message {
-            Message::Increment => {
+            Message1::Increment => {
                 self.value += 1;
             }
-            Message::Decrement => {
+            Message1::Decrement => {
                 self.value -= 1;
             }
         }
     }
-    fn view(&self) -> Column<Message> {
+    fn view(&self) -> Column<Message1> {
         column![
-            button("+").on_press(Message::Increment),
+            button("+").on_press(Message1::Increment),
             text(self.value).size(50),
-            button("-").on_press(Message::Decrement),
+            button("-").on_press(Message1::Decrement),
         ]
     }
 }
 
-fn main() -> iced::Result {
+fn main_() -> iced::Result {
     iced::run("A cool counter", Counter::update, Counter::view)
 }
 
-/*
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser)]
 #[clap(author, version, about)]
 struct AppConfig {
@@ -161,14 +161,14 @@ impl ParseOnAirJson for Option<&Value> {
     }
 }
 
-impl Application for NhkView {
-    type Executor = executor::Default;
-    type Theme = Theme;
-    type Flags = ();
-    type Message = Message;
-    fn new(_flags: ()) -> (Self, Command<Self::Message>) {
-        (Self::default(), Command::none())
-    }
+impl NhkView {
+    // type Executor = executor::Default;
+    // type Theme = Theme;
+    // type Flags = ();
+    // type Message = Message;
+    // fn new(_flags: ()) -> (Self, Command<Self::Message>) {
+    //     (Self::default(), Command::none())
+    // }
     fn view(&self) -> Element<Message> {
         let description_font_size = 11;
         let on_air = self
@@ -196,16 +196,18 @@ impl Application for NhkView {
                     text($value.2).size(description_font_size).width(550),
                     horizontal_space(),
                 ]
-                .align_items(Alignment::Start)
+                // FIXME
+                // .align_items(Alignment::Start)
             };
         }
-        macro_rules! button_color {
+        // FIXME
+        macro_rules! _button_color {
             ($service: expr) => {
-                if self.service == $service {
-                    iced::theme::Button::Positive
-                } else {
-                    iced::theme::Button::Secondary
-                }
+                // if self.service == $service {
+                //     iced::theme::Button::Positive
+                // } else {
+                //     iced::theme::Button::Secondary
+                // }
             };
         }
         macro_rules! button {
@@ -213,7 +215,8 @@ impl Application for NhkView {
                 button($name)
                     .width(120)
                     .padding([5, 2])
-                    .style(button_color!($service))
+                    // FIXME
+                    // .style(button_color!($service))
                     .on_press(Message::SwitchTo($service))
                     .into()
             };
@@ -243,18 +246,20 @@ impl Application for NhkView {
     fn title(&self) -> String {
         String::from("NHK now")
     }
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
-        match message {
-            Message::SwitchTo(service) => {
-                Command::perform(NhkView::get_data(service), Message::JsonLoaded)
-            }
-            Message::Reloading => Command::none(),
-            Message::JsonLoaded(Ok(data)) => {
-                *self = data;
-                Command::none()
-            }
-            _ => Command::none(),
-        }
+    fn update(&mut self, _message: Message) /* -> Command<Self::Message>*/
+    {
+        // FIXME
+        // match message {
+        //     Message::SwitchTo(service) => {
+        //         Command::perform(NhkView::get_data(service), Message::JsonLoaded)
+        //     }
+        //     Message::Reloading => Command::none(),
+        //     Message::JsonLoaded(Ok(data)) => {
+        //         *self = data;
+        //         Command::none()
+        //     }
+        //     _ => Command::none(),
+        // }
     }
 }
 
@@ -282,13 +287,15 @@ fn main() -> iced::Result {
     if CONFIG.get().is_none() {
         CONFIG.set(config.clone()).expect("fail to store config");
     }
+    // FIXME
     let mut settings = Settings::default();
     settings.default_font.family = font::Family::Name("ヒラギノ角ゴシック");
     settings.default_text_size = iced::Pixels(13.0);
-    settings.window.size = iced::Size {
-        height: 270.0,
-        width: 620.0,
-    };
-    NhkView::run(settings)
+    // settings.window.size = iced::Size {
+    //     height: 270.0,
+    //     width: 620.0,
+    // };
+    iced::run("A cool counter", NhkView::update, NhkView::view)
+
+    // NhkView::run(settings)
 }
-*/
